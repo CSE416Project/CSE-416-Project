@@ -1,3 +1,4 @@
+import BackArrow from './components/common/BackArrow';
 import { usePullRefresh } from './hooks/usePullRefresh';
 import GuestSplit from './pages/expenses/GuestSplit';
 import NotificationsPage from './pages/notifications/NotificationsPage';
@@ -148,7 +149,7 @@ export default function App({ initialUser, groupFixtures, friendFixtures }: {
       <p className="terms">By continuing, you agree to the Terms and Privacy Policy.</p>
       {notice && <p className="form-notice" role="status">{notice}</p>}
     </main> : view === 'forgot' ? <main key="forgot" className="signup-screen">
-      <header className="signup-intro"><button type="button" className="back-button" aria-label="Back to log in" onClick={() => changeView('login')}>‹</button><h1>Reset your password</h1><p>Use one of the recovery codes you saved from Account settings.</p></header>
+      <header className="signup-intro"><button type="button" className="back-button" aria-label="Back to log in" onClick={() => changeView('login')}><BackArrow /></button><h1>Reset your password</h1><p>Use one of the recovery codes you saved from Account settings.</p></header>
       <form className="signup-form" onSubmit={recoverWithCode}>
         <label>USERNAME, EMAIL, OR PHONE<input autoComplete="username" required placeholder="@username, email, or phone" value={recovery.identifier} onChange={event => setRecovery(previous => ({ ...previous, identifier: event.target.value }))} /></label>
         <label>RECOVERY CODE<input autoComplete="one-time-code" required placeholder="XXXX-XXXX-XXXX-XXXX" value={recovery.code} onChange={event => setRecovery(previous => ({ ...previous, code: event.target.value.toUpperCase() }))} /></label>
@@ -160,7 +161,7 @@ export default function App({ initialUser, groupFixtures, friendFixtures }: {
       <GoogleSignInButton intent="recover" disabled={submitting} onBusyChange={setGoogleSubmitting} onRecovery={token => { setResetToken(token); setResetPasswords({ next: '', confirm: '' }); changeView('reset'); }} />
       {notice && <p className="form-notice" role="status">{notice}</p>}
     </main> : view === 'reset' ? <main key="reset" className="signup-screen">
-      <header className="signup-intro"><button type="button" className="back-button" aria-label="Back to log in" onClick={() => changeView('login')}>‹</button><h1>Choose a new password</h1><p>Use at least 8 characters, including a number.</p></header>
+      <header className="signup-intro"><button type="button" className="back-button" aria-label="Back to log in" onClick={() => changeView('login')}><BackArrow /></button><h1>Choose a new password</h1><p>Use at least 8 characters, including a number.</p></header>
       <form className="signup-form" onSubmit={resetPassword}>
         <label>NEW PASSWORD<input type="password" autoComplete="new-password" required minLength={8} maxLength={72} pattern="(?=.*[0-9]).{8,}" value={resetPasswords.next} onChange={event => setResetPasswords({ ...resetPasswords, next: event.target.value })} /></label>
         <label>CONFIRM PASSWORD<input type="password" autoComplete="new-password" required value={resetPasswords.confirm} onChange={event => setResetPasswords({ ...resetPasswords, confirm: event.target.value })} /></label>
@@ -168,7 +169,7 @@ export default function App({ initialUser, groupFixtures, friendFixtures }: {
       </form>
       {notice && <p className="form-notice" role="status">{notice}</p>}
     </main> : <main key="signup" className="signup-screen auth-signup">
-      <header className="signup-intro"><button type="button" className="back-button" aria-label="Back to log in" onClick={() => changeView('login')}>‹</button><h1>Create your account</h1><p>Start budgeting alone or with friends.</p></header>
+      <header className="signup-intro"><button type="button" className="back-button" aria-label="Back to log in" onClick={() => changeView('login')}><BackArrow /></button><h1>Create your account</h1><p>Start budgeting alone or with friends.</p></header>
       <label className="google-phone-field">PHONE NUMBER · REQUIRED<input type="tel" value={googlePhone} onChange={event => setGooglePhone(event.target.value)} autoComplete="tel" required placeholder="+1 555 010 0000" /></label>
       <GoogleSignInButton signup phone={googlePhone} onBusyChange={setGoogleSubmitting} disabled={submitting || googlePhone.replace(/\D/g, '').length < 7} onSuccess={account => { setUser(account); setTab('Home'); setNotice(''); }} />
       <p className="manual-divider">or register manually</p>

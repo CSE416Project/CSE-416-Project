@@ -231,13 +231,27 @@ describe('group budgets from the API', () => {
     render(<CategoryBudgets onOpenSimulator={() => {}} />);
     fireEvent.click(screen.getByRole('tab', { name: 'Group' }));
     expect(await screen.findByRole('heading', { name: 'Weekend Trip' })).toBeInTheDocument();
-    expect(screen.getByText('3 members · Trip expenses')).toBeInTheDocument();
+    expect(screen.getByText('3 members')).toBeInTheDocument();
     expect(screen.getByText('of $900.00 shared plan · 12 days left')).toBeInTheDocument();
     expect(screen.getByText('Owes $38.20')).toBeInTheDocument();
     expect(screen.getByText('$38.20 left to settle')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /Shared Apartment/ }));
     expect(screen.getByText('No shared plan set · 12 days left')).toBeInTheDocument();
     expect(screen.getByText('All settled up')).toBeInTheDocument();
+  });
+  it('shows monthly contributions alongside current balances for a past month', async () => {
+    const date = new Date();
+    date.setUTCDate(1);
+    date.setUTCMonth(date.getUTCMonth() - 1);
+    const month = date.toISOString().slice(0, 7);
+    stubApi({ [`GET /budgets/groups?month=${month}`]: () => json({ groups: groupsFixture() }) });
+    render(<CategoryBudgets onOpenSimulator={() => {}} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Group' }));
+    fireEvent.change(screen.getByLabelText('Budget month'), { target: { value: month } });
+    expect(await screen.findByText('of $900.00 shared plan · Month ended')).toBeVisible();
+    expect(screen.getByText('$220.00 paid')).toBeVisible();
+    expect(screen.getByText('$38.20 left to settle')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Edit plan/ })).not.toBeInTheDocument();
   });
   it('shows who owes what', async () => {
     stubApi();

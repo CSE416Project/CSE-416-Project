@@ -196,6 +196,20 @@ describe('group budgets', () => {
     expect(asMember.body.groups.find((group: { id: string }) => group.id === groupId).plannedCents).toBe(0);
   });
 
+  it('carries the last shared plan forward and preserves earlier months when the current plan changes', async () => {
+    const date = new Date();
+    date.setUTCDate(1);
+    date.setUTCMonth(date.getUTCMonth() - 2);
+    const firstMonth = date.toISOString().slice(0, 7);
+    await prisma.groupBudgetPlan.create({ data: { groupId, month: firstMonth, plannedCents: 23000 } });
+    date.setUTCMonth(date.getUTCMonth() + 1);
+    const previousMonth = date.toISOString().slice(0, 7);
+    await owner.put(`/api/budgets/groups/${groupId}/plan`).send({ plannedCents: 45000 }).expect(200);
+    const history = await owner.get(`/api/budgets/groups?month=${previousMonth}`).expect(200);
+    expect(history.body.groups.find((group: { id: string }) => group.id === groupId)).toMatchObject({ spentCents: 0, plannedCents: 23000 });
+    await owner.get('/api/budgets/groups?month=invalid').expect(400);
+  });
+
   it('leaves archived groups out until they are restored', async () => {
     const created = await owner.post('/api/groups').send({ name: 'Settled archive', memberIds: [memberId] }).expect(201);
     const archiveId = created.body.group.id; groupIds.push(archiveId);

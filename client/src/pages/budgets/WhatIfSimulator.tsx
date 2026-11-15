@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { usePullRefresh } from '../../hooks/usePullRefresh';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { budgetsApi, type ApiPersonalBudget } from '../../api/budgets.api';
@@ -61,7 +62,7 @@ export default function WhatIfSimulator({ onBack, onRootChange, active = true }:
   };
 
   if (!data || !model) return <main className="budgets-workspace">
-    <header className="sim-header"><button type="button" aria-label="Back" onClick={onBack}>‹</button>
+    <header className="sim-header"><button type="button" aria-label="Back" onClick={onBack}><BackArrow /></button>
       <div><h1>What-if simulator</h1><p>See how choices change your month</p></div></header>
     {loadError
       ? <><p className="form-notice" role="alert">{loadError}</p><button type="button" className="sim-secondary-button" onClick={() => void load()}>Try again</button></>
@@ -69,7 +70,7 @@ export default function WhatIfSimulator({ onBack, onRootChange, active = true }:
   </main>;
 
   if (model.categories.length === 0) return <main className="budgets-workspace">
-    <header className="sim-header"><button type="button" aria-label="Back" onClick={onBack}>‹</button>
+    <header className="sim-header"><button type="button" aria-label="Back" onClick={onBack}><BackArrow /></button>
       <div><h1>What-if simulator</h1><p>See how choices change your month</p></div></header>
     <section className="sim-category"><strong>No limits to simulate yet</strong>
       <p className="sim-caption">Set a monthly limit for at least one category in the Budget tab, then come back to try changes before committing to them.</p></section>

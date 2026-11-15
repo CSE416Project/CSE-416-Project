@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { photoDataUrl } from '../../utils/photoUpload';
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useAppearance } from '../../appearance';
@@ -124,7 +125,7 @@ export default function ProfileSettings({ user, onUserChange, onLogout, onRootCh
       <p className="profile-footnote">Email and phone number are locked after registration.</p>
     </>}
     {screen === 'password' && <>
-      <header className="subscreen-heading"><button type="button" onClick={() => open('account')} aria-label="Back to Account settings">‹</button><h1>Change password</h1></header>
+      <header className="subscreen-heading"><button type="button" onClick={() => open('account')} aria-label="Back to Account settings"><BackArrow /></button><h1>Change password</h1></header>
       {user.hasPassword ? <form className="profile-form password-form" onSubmit={async event => {
         event.preventDefault();
         if (saving) return;
@@ -148,7 +149,7 @@ export default function ProfileSettings({ user, onUserChange, onLogout, onRootCh
       {message && <p className="setting-notice" role="status">{message}</p>}
     </>}
     {screen === 'recovery' && <>
-      <header className="subscreen-heading"><button type="button" onClick={() => open('account')} aria-label="Back to Account settings">‹</button><h1>Recovery codes</h1><p>Use a code if you forget your password and cannot use Google.</p></header>
+      <header className="subscreen-heading"><button type="button" onClick={() => open('account')} aria-label="Back to Account settings"><BackArrow /></button><h1>Recovery codes</h1><p>Use a code if you forget your password and cannot use Google.</p></header>
       {recoveryCodes.length ? <section className="recovery-code-panel" aria-label="New recovery codes">
         <p className="recovery-warning"><strong>Save these now.</strong> They will not be shown again. Generating another set replaces all of these codes.</p>
         <ol className="recovery-code-list">{recoveryCodes.map(code => <li key={code}><code>{code}</code></li>)}</ol>
@@ -174,7 +175,7 @@ export default function ProfileSettings({ user, onUserChange, onLogout, onRootCh
       {message && <p className="setting-notice" role="status">{message}</p>}
     </>}
     {screen === 'account' && <>
-      <header className="subscreen-heading"><button type="button" onClick={back} aria-label="Back to Settings">‹</button>
+      <header className="subscreen-heading"><button type="button" onClick={back} aria-label="Back to Settings"><BackArrow /></button>
         <h1>Account settings</h1><p>Login methods and account recovery</p></header>
       <h2 className="settings-overline">CONTACT</h2>
       <SettingsRow title="Email" subtitle={user.email} action="Locked" />
@@ -192,7 +193,7 @@ export default function ProfileSettings({ user, onUserChange, onLogout, onRootCh
       {message && <p className="setting-notice" role="status">{message}</p>}
     </>}
     {['notifications', 'appearance', 'privacy', 'help'].includes(screen) && <>
-      <header className="subscreen-heading"><button type="button" onClick={back} aria-label="Back to Settings">‹</button>
+      <header className="subscreen-heading"><button type="button" onClick={back} aria-label="Back to Settings"><BackArrow /></button>
         <h1>{({ notifications: 'Notifications', appearance: 'Appearance', privacy: 'Privacy & security', help: 'Help & legal' } as Record<string, string>)[screen]}</h1></header>
       {screen === 'notifications' && <label className="setting-row preference-control"><span className="setting-row-copy"><strong>Reminders</strong><small>Preview preference for budgets and settlements</small></span>
         <input type="checkbox" checked={reminders} onChange={event => setReminders(event.target.checked)} /></label>}

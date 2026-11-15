@@ -173,7 +173,7 @@ export async function groupBudgets(userId: string, now = new Date()) {
   const window = monthWindow(now);
   const groups = await prisma.group.findMany({
     where: { archivedAt: null, memberships: { some: { userId } } },
-    select: { id: true, name: true, color: true, type: true, memberships: { orderBy: { joinedAt: 'asc' }, select: { userId: true, role: true } }, budgetPlan: true },
+    select: { id: true, name: true, color: true, type: true, memberships: { orderBy: { joinedAt: 'asc' }, select: { userId: true, role: true } }, budgetPlans: { where: { month: { lte: window.month } }, orderBy: { month: 'desc' }, take: 1 } },
     orderBy: { updatedAt: 'desc' },
   });
   if (!groups.length) return [];
@@ -189,7 +189,7 @@ export async function groupBudgets(userId: string, now = new Date()) {
     const memberships = group.memberships;
     const role = memberships.find(member => member.userId === userId)?.role;
     const members = (balances[index] ?? [])
-      .filter(balance => balance.balanceCents !== 0 || memberships.some(member => member.userId === balance.userId))
+      .filter(balance => balance.balanceCents !== 0 || memberships.some(member => member.userId === balance.userId) || monthly.some(expense => expense.paidByUserId === balance.userId))
       .map(balance => ({
         id: balance.userId, name: nameOf.get(balance.userId) ?? 'Former member', isYou: balance.userId === userId,
         paidCents: monthly.filter(expense => expense.paidByUserId === balance.userId).reduce((sum, expense) => sum + expense.totalCents, 0),
@@ -198,7 +198,7 @@ export async function groupBudgets(userId: string, now = new Date()) {
       .sort((a, b) => Number(b.isYou) - Number(a.isYou) || a.name.localeCompare(b.name));
     return {
       id: group.id, name: group.name, color: group.color, type: group.type, memberCount: memberships.length,
-      spentCents: monthly.reduce((sum, expense) => sum + expense.totalCents, 0), plannedCents: group.budgetPlan?.plannedCents ?? 0,
+      spentCents: monthly.reduce((sum, expense) => sum + expense.totalCents, 0), plannedCents: group.budgetPlans[0]?.plannedCents ?? 0,
       daysLeft: window.daysLeft, canEditPlan: role === 'OWNER' || role === 'ADMIN', members,
     };
   });
@@ -208,7 +208,8 @@ export async function saveGroupPlan(userId: string, groupId: string, plannedCent
   const member = await prisma.groupMembership.findUnique({ where: { groupId_userId: { groupId, userId } } });
   if (!member) throw new BudgetError(404, 'Group not found');
   if (member.role === 'MEMBER') throw new BudgetError(403, 'Only group owners and admins can set the shared plan');
-  await prisma.groupBudgetPlan.upsert({ where: { groupId }, create: { groupId, plannedCents }, update: { plannedCents } });
+  const month = monthKey(new Date());
+  await prisma.groupBudgetPlan.upsert({ where: { groupId_month: { groupId, month } }, create: { groupId, month, plannedCents }, update: { plannedCents } });
   return groupBudgets(userId);
 }
 

@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { formatCents } from '../expenses/split';
 import { baselineLeftCents, changedCategories, limitFor, projectedLeftCents, relativeTime, scenarioDeltaCents, type Scenario, type SimModel } from './simulator';
 import './simulator.css';
@@ -36,7 +37,7 @@ type Props = {
 export default function CompareScenarios({ model, scenarios, onBack, onEdit, onApply }: Props) {
   const [first, second] = scenarios;
   return <main className="budgets-workspace">
-    <header className="sim-header"><button type="button" aria-label="Back to saved scenarios" onClick={onBack}>‹</button>
+    <header className="sim-header"><button type="button" aria-label="Back to saved scenarios" onClick={onBack}><BackArrow /></button>
       <div><h1>Compare scenarios</h1><p>Review two saved scenarios side by side and choose which one to apply.</p></div></header>
 
     <div className="sim-baseline-card"><div><small>Current budget</small><span className="sim-tag">Baseline</span></div>

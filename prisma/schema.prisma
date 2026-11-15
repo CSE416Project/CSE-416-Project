@@ -111,7 +111,7 @@ model Group {
   expenses                       Expense[]
   memberships                    GroupMembership[]
   recurringBills                 RecurringBill[]
-  budgetPlan                     GroupBudgetPlan?
+  budgetPlans                    GroupBudgetPlan[]
   archivedAt                     DateTime?
   archiveReason                  String?
   inactivityDays                 Int                             @default(60)
@@ -476,10 +476,13 @@ model WhatIfScenario {
 
 // Shared monthly plan for a group, set by an owner or admin. No row means no plan is set.
 model GroupBudgetPlan {
-  groupId      String   @id
+  groupId      String
+  month        String
   group        Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   plannedCents Int
   updatedAt    DateTime @updatedAt
+
+  @@id([groupId, month])
 }
 
 // Each expense is assigned to at most one settlement period. Original shares remain the ledger.

@@ -14,13 +14,13 @@ expensesRouter.get('/groups/:groupId/expenses', async (req, res) => {
   const input = z.object({ scope: z.enum(['all', 'open', 'history']).default('all'), limit: z.coerce.number().int().min(1).max(100).default(30), cursor: z.string().min(1).optional() }).parse(req.query);
   const result = await transaction(async tx => {
     await requireMember(tx, req.params.groupId, req.userId!);
-    const cursor = input.cursor ? await tx.expense.findFirst({ where: { id: input.cursor, groupId: req.params.groupId }, select: { id: true, createdAt: true } }) : null;
+    const cursor = input.cursor ? await tx.expense.findFirst({ where: { id: input.cursor, groupId: req.params.groupId }, select: { id: true } }) : null;
     if (input.cursor && !cursor) throw new ExpenseError(400, 'Expense history changed. Reload this group.');
     const open = Prisma.sql`EXISTS (SELECT 1 FROM "ExpenseShare" s WHERE s."expenseId" = e.id AND s."userId" <> e."paidByUserId"
       AND s."totalCents" > COALESCE((SELECT SUM(p."amountCents") FROM "ExpensePayment" p WHERE p."expenseId" = e.id AND p."senderUserId" = s."userId" AND p.status = 'CONFIRMED'), 0))`;
     const ids = await tx.$queryRaw<{ id: string }[]>`SELECT e.id FROM "Expense" e WHERE e."groupId" = ${req.params.groupId}
       ${input.scope === 'open' ? Prisma.sql`AND ${open}` : input.scope === 'history' ? Prisma.sql`AND NOT ${open}` : Prisma.empty}
-      ${cursor ? Prisma.sql`AND (e."createdAt", e.id) < (${cursor.createdAt}, ${cursor.id})` : Prisma.empty}
+      ${cursor ? Prisma.sql`AND (e."createdAt", e.id) < (SELECT c."createdAt", c.id FROM "Expense" c WHERE c.id = ${cursor.id})` : Prisma.empty}
       ORDER BY e."createdAt" DESC, e.id DESC ${input.scope === 'open' ? Prisma.empty : Prisma.sql`LIMIT ${input.limit + 1}`}`;
     const more = input.scope !== 'open' && ids.length > input.limit;
     const page = more ? ids.slice(0, input.limit) : ids;

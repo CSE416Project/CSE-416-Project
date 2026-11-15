@@ -117,3 +117,81 @@
 }
 
 .groups-workspace > .settlement-inbox:has(.settlement-card, .settlement-notice) { padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+
+.payment-card-heading, .collection-progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.payment-card-heading { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+.payment-card-heading > span { color: var(--accent); }
+.payment-card-balance { color: var(--muted); font-size: 13px; }
+.payment-card-balance strong { color: var(--accent); font-size: 24px; }
+.collection-progress-label { margin-top: 5px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; }
+
+.collection-summary { padding: 14px 16px 4px; border-radius: 15px; background: var(--soft-green); overflow-wrap: anywhere; }
+.collection-summary > strong, .collection-member .payment-card-heading { font-size: 15px; }
+.collection-summary .payment-card-balance { margin: 4px 0; }
+.collection-expenses summary {
+  display: flex; align-items: center; gap: 8px; min-height: 44px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+}
+.collection-expenses summary::-webkit-details-marker { display: none; }
+.collection-expenses summary span { padding: 1px 8px; border-radius: 12px; background: var(--surface); color: var(--accent); }
+.collection-expenses summary::after {
+  content: ''; margin-inline: auto 4px; width: 7px; height: 7px;
+  border: solid var(--accent); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.collection-expenses[open] summary::after { transform: rotate(225deg); }
+.collection-expenses ul {
+  list-style: none; margin: 0 0 10px; padding: 0 12px; max-height: 9rem; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+}
+.collection-expenses li { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 0; box-sizing: border-box; font-size: 14px; font-weight: 500; line-height: 1.4; }
+.collection-expenses li svg { flex: none; color: var(--accent); }
+.collection-expenses li span { min-width: 0; overflow-wrap: anywhere; }
+.collection-expenses li + li { border-top: 1px solid var(--border); }
+.collection-expenses :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settlement-dialog .collection-member { background: var(--surface); overflow-wrap: anywhere; }
+.collection-member .payment-card-heading { line-height: 1.35; }
+.collection-member .payment-card-heading b { font-variant-numeric: tabular-nums; }
+.collection-member .settlement-person-status, .collection-picker h3 { font-size: 14px; }
+.collection-member small { font-size: 13px; }
+.collection-picker { display: grid; gap: 8px; margin: 16px 0 10px; }
+.collection-picker section { min-width: 0; }
+.collection-picker section + section { border-top: 1px solid var(--border); padding-top: 8px; }
+.collection-picker h3 { margin: 0; }
+.collection-picker h3 span { color: var(--muted); font-weight: 400; }
+.collection-choices { display: flex; overflow-x: auto; gap: 4px; scrollbar-width: thin; padding: 8px 3px 3px; }
+.collection-choices button { display: grid; justify-items: center; gap: 5px; flex: 0 0 64px; padding: 5px 3px; border: 0; background: transparent; }
+.collection-choice-name { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.collection-avatar .group-avatar { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; }
+.collection-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.collection-choices [aria-pressed=true] .group-avatar { outline: 2px solid var(--accent); outline-offset: 2px; }
+.collection-choices [aria-pressed=true] .collection-choice-name { color: var(--accent); font-weight: 700; }
+.collection-member .settlement-person-actions button { flex: 1 1 110px; }
+.collection-member .collection-reminder,
+.collection-member .settlement-person-actions button {
+  min-height: var(--control-height);
+  border-radius: var(--radius-control);
+  font-size: var(--text-control);
+  font-weight: 600;
+}
+.collection-member .collection-reminder,
+.collection-member .settlement-person-actions button:not(.settlement-confirm-action) {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.settlement-dialog:has(.collection-picker) header button { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; font-size: 19px; }
+.collection-member .collection-reminder { order: 1; margin-top: 4px; }
+
+.send-member form { margin-top: 4px; }
+.send-member select, .send-member .settlement-primary {
+  min-height: var(--control-height);
+  border-radius: var(--radius-control);
+  font-size: var(--text-control);
+}
+.send-member .settlement-primary { font-weight: 600; }

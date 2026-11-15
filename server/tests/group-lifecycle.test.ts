@@ -72,7 +72,7 @@ it('permanently deletes group history and access for everyone, while preserving 
   const id = await group('Recurring'), keep = await group();
   const expenseId = await expense(id); await send(expenseId);
   await prisma.expenseReceipt.create({ data: { expenseId, name: 'test.jpg', mimeType: 'image/jpeg', data: new Uint8Array([1, 2, 3]) } });
-  await prisma.groupBudgetPlan.create({ data: { groupId: id, plannedCents: 10000 } });
+  await prisma.groupBudgetPlan.create({ data: { groupId: id, month: new Date().toISOString().slice(0, 7), plannedCents: 10000 } });
   await owner.post(`/api/groups/${id}/recurring`).send({ title: 'Schedule', amountCents: 1000, startDate: '2090-01-01', frequency: 'Monthly', defaultPlan: { payerId: ids[0], shares: { [ids[0]!]: 500, [ids[1]!]: 500 } } }).expect(201);
   await request(app).delete(`/api/groups/${id}`).expect(401);
   await outsider.delete(`/api/groups/${id}`).expect(404);

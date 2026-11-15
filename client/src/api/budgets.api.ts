@@ -39,7 +39,7 @@ export const budgetsApi = {
   deleteScenario: (id: string) => apiRequest<void>(`/budgets/scenarios/${id}`, { method: 'DELETE' }),
   home: () => apiRequest<ApiHomeSummary>('/budgets/home'),
   history: () => apiRequest<ApiSpendingIncomeHistory>('/budgets/history'),
-  groups: () => apiRequest<{ groups: ApiGroupBudget[] }>('/budgets/groups'),
+  groups: (month?: string) => apiRequest<{ groups: ApiGroupBudget[] }>(`/budgets/groups${month ? `?month=${encodeURIComponent(month)}` : ''}`),
   saveGroupPlan: (groupId: string, plannedCents: number) =>
     apiRequest<{ groups: ApiGroupBudget[] }>(`/budgets/groups/${groupId}/plan`, { method: 'PUT', body: JSON.stringify({ plannedCents }) }),
 };

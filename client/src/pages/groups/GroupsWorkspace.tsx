@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { usePullRefresh } from '../../hooks/usePullRefresh';
 import { photoDataUrl } from '../../utils/photoUpload';
 import SettlementInbox from '../settlements/SettlementInbox';
@@ -91,7 +92,7 @@ const initialDraft = (): Group => ({ id: 0, name: '', description: '', type: 'Ge
 
 function Header({ title, subtitle, back, trailing }: { title: string; subtitle?: string; back?: () => void; trailing?: ReactNode }) {
   return <header className="group-header">
-    {back && <button className="group-back" type="button" onClick={back} aria-label="Back">‹</button>}
+    {back && <button className="group-back" type="button" onClick={back} aria-label="Back"><BackArrow /></button>}
     <div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>{trailing}
   </header>;
 }
@@ -728,7 +729,7 @@ export default function GroupsWorkspace({ onRootChange, currentUser, initialGrou
       <button className="group-primary" type="submit" form="create-group">Create group</button>
     </>}
     {screen === 'detail' && active && <>
-      <div className="group-detail-header"><button type="button" className="group-back" onClick={() => go(active.archived ? 'archive' : 'list')} aria-label="Back to Groups">‹</button>
+      <div className="group-detail-header"><button type="button" className="group-back" onClick={() => go(active.archived ? 'archive' : 'list')} aria-label="Back to Groups"><BackArrow /></button>
         <GroupAvatar name={active.name} color={active.color} photo={active.photo} /><span><h1>{active.name}</h1><small>{active.type}{active.type === 'Trip' && active.startDate ? ` · ${dateLabel(active.startDate)}–${dateLabel(active.endDate)}` : ''} · {active.members.length + 1} members</small></span>
         <button type="button" className="group-more" onClick={() => { setEditing(true); go('settings'); }} aria-label="Group settings">•••</button></div>
       {!initialGroupsData && historyCursors[active.id] && <button type="button" disabled={historyBusy} onClick={() => {
@@ -802,6 +803,7 @@ export default function GroupsWorkspace({ onRootChange, currentUser, initialGrou
         <section aria-label="Resolved transactions"><h2 className="group-section-title">Resolved transactions</h2>
           {[...resolvedSplits].reverse().map((split, index) => <button type="button" className="group-transaction expense-list-row" key={split.expenseId ?? index} onClick={() => { setViewedExpense({ title: split.name, subtitle: 'Resolved · retained in history', amount: formatCents(split.totalCents), split }); go('expense-details'); }}><span><strong>{split.name}</strong><small>Resolved · Not included in new splits</small></span><b>{formatCents(split.totalCents)}</b></button>)}
           {!resolvedSplits.length && <p className="group-caption">Settled transactions will stay here for reference.</p>}
+        {initialGroupsData && <p className="group-caption">Expenses are saved for this preview session.</p>}
         </section>
       </>}
     </>}

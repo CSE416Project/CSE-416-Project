@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { useState } from 'react';
 import { formatCents } from '../expenses/split';
 import {
@@ -90,7 +91,7 @@ export default function ScenarioEditor({
   const hasChanges = results.some(result => result.changed);
 
   return <main className="budgets-workspace">
-    <header className="sim-header"><button type="button" aria-label="Back" onClick={onBack}>‹</button>
+    <header className="sim-header"><button type="button" aria-label="Back" onClick={onBack}><BackArrow /></button>
       <div><h1>What-if simulator</h1><p>See how choices change your month</p></div></header>
 
     <section className="sim-hero" aria-label="Projected balance">
