@@ -1,5 +1,5 @@
 import { usePullRefresh } from '../../hooks/usePullRefresh';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { bankingApi, type ApiBankTransaction, type BankBudgetCategory, type BankReviewCategory, type TransactionReview } from '../../api/banking.api';
 import { ApiError } from '../../api/client';
 import { formatCents } from '../expenses/split';
@@ -100,11 +100,22 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
   const [month, setMonth] = useState(initialMonth || currentMonth);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [transactions, setTransactions] = useState<ApiBankTransaction[]>([]);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [reviewCountError, setReviewCountError] = useState('');
+  const countRequest = useRef(0);
+  const loadReviewCount = useCallback(async () => {
+    const id = ++countRequest.current;
+    try {
+      const result = await bankingApi.transactions('unreviewed');
+      if (id === countRequest.current) { setReviewCount(result.transactions.length); setReviewCountError(''); }
+    } catch { if (id === countRequest.current) setReviewCountError('Unable to check transactions needing categorization. Pull down to retry.'); }
+  }, []);
+  useEffect(() => { void loadReviewCount(); return () => { countRequest.current++; }; }, [loadReviewCount]);
   const [selected, setSelected] = useState<ApiBankTransaction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const filterMenuRef = useRef<HTMLDivElement>(null);
-  const requestKey = useMemo(() => `${filter}:${month}:${query.trim()}`, [filter, month, query]);
+  const requestKey = useMemo(() => `${filter}:${filter === 'unreviewed' ? '' : month}:${query.trim()}`, [filter, month, query]);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -121,7 +132,7 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
     let active = true;
     const timeout = window.setTimeout(() => {
       setLoading(true); setError('');
-      bankingApi.transactions(filter, query, month).then(result => { if (active) setTransactions(result.transactions); })
+      bankingApi.transactions(filter, query, filter === 'unreviewed' ? '' : month).then(result => { if (active) setTransactions(result.transactions); })
         .catch(failure => { if (active) setError(message(failure)); })
         .finally(() => { if (active) setLoading(false); });
     }, query.trim() ? 250 : 0);
@@ -129,13 +140,18 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
   }, [requestKey]);
 
   usePullRefresh(async () => {
-    const result = await bankingApi.transactions(filter, query, month);
+    const [result] = await Promise.all([bankingApi.transactions(filter, query, filter === 'unreviewed' ? '' : month), loadReviewCount()]);
     setTransactions(result.transactions);
   });
   const saved = (transaction: ApiBankTransaction) => {
     const wasUnreviewed = !!selected && !selected.reviewed && !selected.excluded;
     const isUnreviewed = !transaction.reviewed && !transaction.excluded;
-    if (wasUnreviewed !== isUnreviewed) onUnreviewedDelta?.(isUnreviewed ? 1 : -1);
+    if (wasUnreviewed !== isUnreviewed) {
+      const delta = isUnreviewed ? 1 : -1;
+      countRequest.current++;
+      setReviewCount(count => Math.max(0, count + delta));
+      onUnreviewedDelta?.(delta);
+    }
     setSelected(null);
     const belongs = filter === 'all' || filter === 'excluded' && transaction.excluded
       || filter === 'unreviewed' && !transaction.reviewed && !transaction.excluded;
@@ -144,7 +160,7 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
 
   return <main className="banking-workspace review-workspace">
     <header className="bank-header"><button type="button" aria-label="Back" onClick={onBack}>‹</button>
-      <div><h1>Transactions</h1><p>{monthOptions.find(item => item.value === month)?.label ?? month}</p></div></header>
+      <div><h1>Transactions</h1><p>{filter === 'unreviewed' ? 'Needs category · All months' : monthOptions.find(item => item.value === month)?.label ?? month}</p></div></header>
     <div className="review-toolbar">
       <input className="review-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search merchant, account, or note" aria-label="Search transactions" />
       <div className="review-filter-menu" ref={filterMenuRef}>
@@ -152,18 +168,27 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
         </button>
         {filtersOpen && <div className="review-filter-popover" role="dialog" aria-label="Transaction filters">
-          <label>Month<select aria-label="Transaction month" value={month} onChange={event => setMonth(event.target.value)}>
+          <label>Month<select disabled={filter === 'unreviewed'} aria-label="Transaction month" value={month} onChange={event => setMonth(event.target.value)}>
             {monthOptions.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select></label>
-          <fieldset><legend>Status</legend><div className="review-filter-options">
-            {FILTERS.map(item => <button type="button" key={item.key} className={filter === item.key ? 'active' : ''} onClick={() => setFilter(item.key)}>{item.label}</button>)}
-          </div></fieldset>
+          {filter === 'unreviewed' && <p className="bank-caption">Needs category includes all months.</p>}
           <button type="button" className="review-filter-done" onClick={() => setFiltersOpen(false)}>Done</button>
         </div>}
       </div>
     </div>
+    <div className="review-tabs" role="tablist" aria-label="Transaction status">
+      {FILTERS.map((item, index) => <button type="button" role="tab" id={`transaction-tab-${item.key}`} aria-controls="transaction-results" aria-selected={filter === item.key} tabIndex={filter === item.key ? 0 : -1}
+        key={item.key} className={filter === item.key ? 'active' : ''} onClick={() => setFilter(item.key)} onKeyDown={event => {
+          const next = event.key === 'ArrowRight' ? (index + 1) % FILTERS.length : event.key === 'ArrowLeft' ? (index + FILTERS.length - 1) % FILTERS.length : event.key === 'Home' ? 0 : event.key === 'End' ? FILTERS.length - 1 : null;
+          if (next === null) return;
+          event.preventDefault(); setFilter(FILTERS[next]!.key);
+          (event.currentTarget.parentElement?.children[next] as HTMLButtonElement)?.focus();
+        }}>{item.label}{item.key === 'unreviewed' && reviewCount > 0 && <span className="review-tab-attention" aria-label={`${reviewCount} ${reviewCount === 1 ? 'transaction needs' : 'transactions need'} categorization`}><b aria-hidden="true">!</b>{reviewCount}</span>}</button>)}
+    </div>
+    {reviewCountError && <p className="form-notice" role="alert">{reviewCountError}</p>}
+    <div id="transaction-results" role="tabpanel" aria-labelledby={`transaction-tab-${filter}`} aria-busy={loading} tabIndex={0}>
     {loading && <p className="bank-caption" role="status">Loading transactions…</p>}
-    {!loading && !error && transactions.length === 0 && <section className="review-empty"><strong>{filter === 'unreviewed' ? 'Everything is categorized' : 'No matching transactions'}</strong><p>{filter === 'unreviewed' ? 'Only transactions the app could not categorize automatically appear here.' : 'Try another filter or search.'}</p></section>}
+    {!loading && !error && transactions.length === 0 && <section className="review-empty"><strong>{filter === 'unreviewed' && !query.trim() ? 'Everything is categorized' : 'No matching transactions'}</strong><p>{filter === 'unreviewed' && !query.trim() ? 'Only transactions the app could not categorize automatically appear here.' : 'Try another filter or search.'}</p></section>}
     {error && <p className="form-notice" role="alert">{error}</p>}
     <div className="review-list">
       {transactions.map(transaction => <button type="button" className={transaction.linkedExpense ? 'review-card linked-group-expense' : 'review-card'} key={transaction.id} aria-disabled={transaction.source === 'group_payment'} onClick={() => { if (transaction.source !== 'group_payment') setSelected(transaction); }}>
@@ -176,6 +201,7 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
           <span className="review-original-amount"><strong>{formatCents(transaction.amountCents)}</strong><small>Original charge</small></span>
         </span> : <span className={transaction.amountCents < 0 ? 'review-amount income' : 'review-amount'}>{formatCents(transaction.amountCents)}</span>}
       </button>)}
+    </div>
     </div>
     {selected && <ReviewEditor transaction={selected} onCancel={() => setSelected(null)} onSaved={saved} />}
   </main>;
