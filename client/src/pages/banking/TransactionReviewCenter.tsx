@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { usePullRefresh } from '../../hooks/usePullRefresh';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { bankingApi, type ApiBankTransaction, type BankBudgetCategory, type BankReviewCategory, type TransactionReview } from '../../api/banking.api';
@@ -159,7 +160,7 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
   };
 
   return <main className="banking-workspace review-workspace">
-    <header className="bank-header"><button type="button" aria-label="Back" onClick={onBack}>‹</button>
+    <header className="bank-header"><button type="button" aria-label="Back" onClick={onBack}><BackArrow /></button>
       <div><h1>Transactions</h1><p>{filter === 'unreviewed' ? 'Needs category · All months' : monthOptions.find(item => item.value === month)?.label ?? month}</p></div></header>
     <div className="review-toolbar">
       <input className="review-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search merchant, account, or note" aria-label="Search transactions" />

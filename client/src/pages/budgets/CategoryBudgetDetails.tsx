@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import Avatar from '../../components/common/Avatar';
 import { ApiError } from '../../api/client';
 import { formatCents } from '../expenses/split';
@@ -6,7 +7,7 @@ import { MAX_LIMIT_CENTS, categoryInsights, daysLeftLabel, categoryPct, totalSpe
 import { settlementsFor, totalOwedCents, type GroupBudget } from './groupBudgetPlan';
 
 const Back = ({ label, onBack }: { label: string; onBack: () => void }) =>
-  <button type="button" className="cb-back" onClick={onBack}>‹ {label}</button>;
+  <button type="button" className="cb-back" onClick={onBack}><BackArrow /> {label}</button>;
 
 const errorMessage = (error: unknown) => error instanceof ApiError ? error.message : 'Unable to reach the server. Try again.';
 
@@ -75,7 +76,7 @@ export function WhoOwesWhat({ group, onBack }: { group: GroupBudget; onBack: () 
     <header className="cb-header"><h1>Who owes what</h1><p>{group.name}</p></header>
     <section className="cb-hero" aria-label="Settlement summary">
       <strong className="cb-hero-amount">{owed ? `${formatCents(owed)} left to settle` : 'All settled up'}</strong>
-      <p className="cb-hero-sub">{formatCents(group.spentCents)} spent this month across {group.members.length} members</p>
+      <p className="cb-hero-sub">Current balances across {group.members.length} members</p>
     </section>
     <h2 className="cb-section-heading">Payments to make</h2>
     {settlements.length === 0 && <p className="cb-notice" role="status">Nobody owes anything right now.</p>}

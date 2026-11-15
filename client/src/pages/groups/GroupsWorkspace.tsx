@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { usePullRefresh } from '../../hooks/usePullRefresh';
 import { photoDataUrl } from '../../utils/photoUpload';
 import SettlementInbox from '../settlements/SettlementInbox';
@@ -91,7 +92,7 @@ const initialDraft = (): Group => ({ id: 0, name: '', description: '', type: 'Ge
 
 function Header({ title, subtitle, back, trailing }: { title: string; subtitle?: string; back?: () => void; trailing?: ReactNode }) {
   return <header className="group-header">
-    {back && <button className="group-back" type="button" onClick={back} aria-label="Back">‹</button>}
+    {back && <button className="group-back" type="button" onClick={back} aria-label="Back"><BackArrow /></button>}
     <div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>{trailing}
   </header>;
 }
@@ -728,7 +729,7 @@ export default function GroupsWorkspace({ onRootChange, currentUser, initialGrou
       <button className="group-primary" type="submit" form="create-group">Create group</button>
     </>}
     {screen === 'detail' && active && <>
-      <div className="group-detail-header"><button type="button" className="group-back" onClick={() => go(active.archived ? 'archive' : 'list')} aria-label="Back to Groups">‹</button>
+      <div className="group-detail-header"><button type="button" className="group-back" onClick={() => go(active.archived ? 'archive' : 'list')} aria-label="Back to Groups"><BackArrow /></button>
         <GroupAvatar name={active.name} color={active.color} photo={active.photo} /><span><h1>{active.name}</h1><small>{active.type}{active.type === 'Trip' && active.startDate ? ` · ${dateLabel(active.startDate)}–${dateLabel(active.endDate)}` : ''} · {active.members.length + 1} members</small></span>
         <button type="button" className="group-more" onClick={() => { setEditing(true); go('settings'); }} aria-label="Group settings">•••</button></div>
       {!initialGroupsData && historyCursors[active.id] && <button type="button" disabled={historyBusy} onClick={() => {
@@ -802,7 +803,7 @@ export default function GroupsWorkspace({ onRootChange, currentUser, initialGrou
         <section aria-label="Resolved transactions"><h2 className="group-section-title">Resolved transactions</h2>
           {[...resolvedSplits].reverse().map((split, index) => <button type="button" className="group-transaction expense-list-row" key={split.expenseId ?? index} onClick={() => { setViewedExpense({ title: split.name, subtitle: 'Resolved · retained in history', amount: formatCents(split.totalCents), split }); go('expense-details'); }}><span><strong>{split.name}</strong><small>Resolved · Not included in new splits</small></span><b>{formatCents(split.totalCents)}</b></button>)}
           {!resolvedSplits.length && <p className="group-caption">Settled transactions will stay here for reference.</p>}
-        <p className="group-caption">{initialGroupsData ? 'Expenses are saved for this preview session.' : 'Expenses and confirmed payments are saved for your group.'}</p>
+        {initialGroupsData && <p className="group-caption">Expenses are saved for this preview session.</p>}
         </section>
       </>}
     </>}
@@ -835,7 +836,6 @@ export default function GroupsWorkspace({ onRootChange, currentUser, initialGrou
       {groupMembers(active).map(member => <div className="member-row" key={member.id}><Avatar name={member.name} color={member.color} /><span><strong>{member.id === 'you' ? 'You' : member.name}</strong><small>{member.id === 'you'
         ? `${active.currentUserRole ?? 'OWNER'} · You` : active.memberRoles?.[member.id] ?? 'MEMBER'}</small></span></div>)}
       {active.createdBy && <p className="group-info"><strong>Created by {active.createdBy.id === currentUser.id ? 'you' : active.createdBy.name}</strong><small>@{active.createdBy.username}</small></p>}
-      <p className="group-info"><strong>New members start from $0</strong><small>Previous expenses and balances are not assigned to them.</small></p>
       <div className="group-form"><label>Archive after inactive days<input type="number" min="1" max="3650" disabled={!canManageActive} value={active.inactivityDays ?? 60} onChange={event => setGroups(previous => previous.map(group => group.id === active.id ? { ...group, inactivityDays: Number(event.target.value) } : group))} /></label></div>
       <p className="group-caption">Default: 60 days. Opening a group does not count as activity. Archiving is shared by all members.</p>
       <button className="group-secondary" type="button" disabled={!active.archived && !canArchive(active)} onClick={() => active.archived ? restoreGroup(active) : archiveGroup(active)}>{active.archived ? 'Restore group' : 'Archive group'}</button>

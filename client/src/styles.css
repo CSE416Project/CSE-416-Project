@@ -101,3 +101,6 @@ button:disabled { cursor: not-allowed; }
 *::-webkit-scrollbar { width:6px; height:6px; }
 *::-webkit-scrollbar-track { background:transparent; }
 *::-webkit-scrollbar-thumb { background:var(--muted); border-radius:999px; }
+
+/* Navigation chevron sized to the Notifications settings header. */
+.app-back-arrow { display: inline-block; flex: none; font-family: inherit; font-size: 28px; font-weight: 400; line-height: 1; vertical-align: middle; }

@@ -42,7 +42,7 @@ export function toGroupBudget(group: ApiGroupBudget): GroupBudget {
   });
   return {
     id: group.id, name: group.name, color: group.color,
-    memberInfo: `${group.memberCount} ${group.memberCount === 1 ? 'member' : 'members'} · ${group.type} expenses`,
+    memberInfo: `${group.memberCount} ${group.memberCount === 1 ? 'member' : 'members'}`,
     spentCents: group.spentCents, plannedCents: group.plannedCents, daysLeft: group.daysLeft, canEditPlan: group.canEditPlan, members,
   };
 }
@@ -81,5 +81,5 @@ const joinNames = (names: string[]) =>
 // "Jordan still owes ..." / "You and Alex still owe ..."
 export function settleUpBody(budget: GroupBudget): string {
   const debtors = budget.members.filter(m => m.oweCents > 0).map(m => m.name);
-  return `${joinNames(debtors)} still ${debtors.length === 1 && debtors[0] !== 'You' ? 'owes' : 'owe'} for shared expenses — settle up whenever you're ready.`;
+  return `${joinNames(debtors)} still ${debtors.length === 1 && debtors[0] !== 'You' ? 'owes' : 'owe'} money in ${budget.name}. Settle up when you’re ready.`;
 }

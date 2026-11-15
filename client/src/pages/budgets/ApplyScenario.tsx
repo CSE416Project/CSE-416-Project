@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { formatCents } from '../expenses/split';
 import { changedCategories, initials, limitFor, projectedLeftCents, relativeTime, type Scenario, type SimModel } from './simulator';
 import './simulator.css';
@@ -17,7 +18,7 @@ export default function ApplyScenario({ model, scenario, notice, busy = false, o
   const changed = changedCategories(model, scenario.limits);
 
   return <main className="budgets-workspace">
-    <header className="sim-header"><button type="button" aria-label="Back" onClick={onBack}>‹</button>
+    <header className="sim-header"><button type="button" aria-label="Back" onClick={onBack}><BackArrow /></button>
       <div><h1>Apply scenario</h1><p>Confirm the changes before they update your budget.</p></div></header>
 
     <h2 className="sim-comparison-heading">Scenario details</h2>

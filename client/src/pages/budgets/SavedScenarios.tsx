@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { formatCents } from '../expenses/split';
 import { MAX_COMPARE_SELECTION, MAX_SAVED_SCENARIOS, initials, projectedLeftCents, relativeTime, type Scenario, type SimModel } from './simulator';
 import './simulator.css';
@@ -20,7 +21,7 @@ export default function SavedScenarios({
   onToggleSelect, onOpenScenario, onDeleteScenario, onCompare, onCreateNew, onBack,
 }: Props) {
   return <main className="budgets-workspace">
-    <header className="sim-header"><button type="button" aria-label="Back to what-if simulator" onClick={onBack}>‹</button>
+    <header className="sim-header"><button type="button" aria-label="Back to what-if simulator" onClick={onBack}><BackArrow /></button>
       <div><h1>Saved scenarios</h1><p>Compare saved what-if scenarios and jump back into the editor when you need to update one.</p></div>
       <span className="sim-header-badge">{selectedIds.length} selected</span></header>
 

@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { usePullRefresh } from '../../hooks/usePullRefresh';
 import { useEffect, useState } from 'react';
 import { ApiError } from '../../api/client';
@@ -99,11 +100,9 @@ export default function ConnectedAccounts({ onBack }: { onBack?: () => void }) {
   });
 
   return <main className="banking-workspace">
-    <header className="bank-header"><button type="button" aria-label="Back" onClick={onBack}>‹</button>
+    <header className="bank-header"><button type="button" aria-label="Back" onClick={onBack}><BackArrow /></button>
       <div><h1>Connected accounts</h1><p>Syncs at sign-in or whenever you choose</p></div></header>
 
-    <section className="bank-banner"><strong>Bank credentials stay with Plaid</strong>
-      <small>The app stores encrypted connection tokens only.</small></section>
 
     {loading && <p className="bank-caption">Loading accounts…</p>}
     {!loading && accounts.length === 0 && <p className="bank-caption">No accounts connected yet.</p>}

@@ -27,7 +27,7 @@ it('shows send notifications, records the method and preserves an idempotency ke
 });
 it('shows real sent/confirmed progress and lets only the recipient confirm or remind through the collection dialog', async () => {
   const current = data('owner');
-  current.batches[0]!.pairs[0] = { ...pair, pendingCents: 1000, unreportedCents: 2000, pendingPayments: [{ id: 'p1', cents: 1000, method: 'Venmo' }] };
+  current.batches[0]!.pairs[0] = { ...pair, pendingCents: 1000, unreportedCents: 2000, pendingPayments: [{ id: 'p1', cents: 700, method: 'Venmo' }, { id: 'p2', cents: 300, method: 'Venmo' }] };
   vi.spyOn(settlementsApi, 'inbox').mockResolvedValue(current);
   const confirm = vi.spyOn(settlementsApi, 'confirmGroup').mockResolvedValue({});
   const remind = vi.spyOn(settlementsApi, 'remindGroup').mockResolvedValue(undefined);
@@ -37,7 +37,7 @@ it('shows real sent/confirmed progress and lets only the recipient confirm or re
   const dialog = screen.getByRole('dialog', { name: 'Collection progress' });
   expect(within(dialog).getByText('$10.00 · Venmo')).toBeInTheDocument();
   fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm received from Jordan' }));
-  await waitFor(() => expect(confirm).toHaveBeenCalledWith('group', { senderId: 'member', allocations: [{ batchId: 'batch', paymentIds: ['p1'] }], status: 'CONFIRMED' }));
+  await waitFor(() => expect(confirm).toHaveBeenCalledWith('group', { senderId: 'member', allocations: [{ batchId: 'batch', paymentIds: ['p1', 'p2'] }], status: 'CONFIRMED' }));
   await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Remind Jordan' })).toBeEnabled());
   fireEvent.click(within(dialog).getByRole('button', { name: 'Remind Jordan' }));
   await waitFor(() => expect(remind).toHaveBeenCalledWith('group', 'member'));
@@ -104,7 +104,7 @@ it('keeps multiple recipients in one group card and counts each debtor only once
   render(<SettlementInbox />);
   expect(await screen.findByRole('button', { name: /Send \$60.00 to 2 people/ })).toBeInTheDocument();
   expect(screen.getAllByRole('button', { name: /Trip · Collect/ })).toHaveLength(1);
-  expect(screen.getByText('0 of 1 people reported sent · 0 confirmed received')).toBeInTheDocument();
+  expect(screen.getByText('0 of 1 reported sending · 0 confirmed received')).toBeInTheDocument();
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '6000');
 });
 it('blocks a stale payment popup when a new split changes its allocations', async () => {
@@ -113,7 +113,7 @@ it('blocks a stale payment popup when a new split changes its allocations', asyn
   const report = vi.spyOn(settlementsApi, 'reportGroup').mockResolvedValue({});
   render(<SettlementInbox />);
   fireEvent.click(await screen.findByRole('button', { name: /Send Alex/ }));
-  current = { ...current, batches: [...current.batches, { ...structuredClone(batch), id: 'new' }] };
+  current = { ...current, batches: [...current.batches, { ...structuredClone(batch), id: 'new', expenses: [{ id: 'new-expense', title: 'Lunch' }] }] };
   fireEvent(window, new Event('cse416:settlements'));
   expect(await screen.findByRole('alert')).toHaveTextContent('The amount changed');
   expect(screen.getByRole('button', { name: 'I sent $60.00' })).toBeDisabled();

@@ -44,8 +44,16 @@
 .cb-category-bar>div{height:100%;border-radius:6px;transition:width .15s ease}
 
 .cb-notice{margin:14px 0 0;padding:10px 12px;border-radius:12px;background:var(--soft-green);color:var(--accent);font-size:11px;line-height:1.45}
-.cb-notice.cb-settle strong{display:block;margin-bottom:4px;font-size:13px;font-weight:700}
-.cb-notice.cb-settle p{margin:0}
+.cb-balance-summary {
+  display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center;
+  gap: 4px 12px; padding: 16px; border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.cb-balance-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--soft-blue); color: var(--text); }
+.cb-balance-summary.is-settled .cb-balance-icon { background: var(--soft-green); color: var(--accent); }
+.cb-balance-summary strong { font-size: var(--text-section); color: var(--text); }
+
+.cb-balance-summary p{grid-column:2;margin:0;overflow-wrap:anywhere;color:var(--text);font-size:var(--text-body);line-height:1.5}
 
 .cb-member-name{display:flex;align-items:center;gap:8px}
 .cb-member-name .group-avatar{width:28px;height:28px;font-size:12px}
@@ -89,13 +97,16 @@
 .cb-bank-subcard small { display:block; margin-top:2px; font-size:11px; }
 .cb-bank-original { flex-shrink:0; text-align:right; }
 
-.cb-month-picker{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0;font-weight:600}
-.cb-month-picker select{min-width:0;padding:7px 10px;border:1px solid var(--border,#dedbce);border-radius:10px;background:var(--surface,#fff);color:inherit;font:inherit;font-size:14px}
+.cb-month-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-height: 44px; margin: 6px 0; color: var(--text); font-size: 14px; font-weight: 600; }
+.cb-month-control { position: relative; max-width: 100%; margin-inline-start: auto; }
+.cb-month-control select { appearance: none; max-width: 100%; min-height: 32px; padding: 4px 26px 4px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.cb-month-control::after { content: ''; position: absolute; right: 10px; top: 50%; width: 5px; height: 5px; border: solid var(--accent); border-width: 0 1.5px 1.5px 0; transform: translateY(-70%) rotate(45deg); pointer-events: none; }
 
 /* Keep personal budgeting visually aligned with groups and expense entry. */
 .cb-screen{font-family:var(--font-ui);font-size:var(--text-body);line-height:1.45}
 .cb-screen button,.cb-screen input,.cb-screen select{font-family:inherit}
 .cb-header h1,.cb-heading-row h1{font-size:var(--text-page-title);line-height:1.25}
+.cb-header:has(.cb-heading-row) p{font-size:13px;line-height:1.45}
 .cb-header p,.cb-detail-note,.cb-preview-status{font-size:var(--text-body);line-height:1.5}
 .cb-section-heading{font-size:var(--text-section);line-height:1.3}
 .cb-category,.cb-review-card{border:1px solid transparent;border-radius:var(--radius-card)}
@@ -103,7 +114,7 @@
 .cb-category-head strong,.cb-review-row strong{font-size:var(--text-control)}
 .cb-category-head span,.cb-review-row small,.cb-hero-sub,.cb-hero-meta{font-size:var(--text-caption)}
 .cb-toggle button,.cb-simulator-link,.cb-review-all,.cb-actions button{min-height:var(--control-height);border-radius:var(--radius-control);font-size:var(--text-body)}
-.cb-month-picker select,.cb-limit-row input{min-height:var(--control-height);border-radius:var(--radius-control);font-size:var(--text-control)}
+.cb-limit-row input{min-height:var(--control-height);border-radius:var(--radius-control);font-size:var(--text-control)}
 .cb-back{display:inline-flex;align-items:center;min-height:var(--icon-button-size);padding:0 8px;border-radius:var(--radius-control);color:var(--muted);font-size:var(--text-body)}
 .cb-back:hover{background:var(--surface-hover);color:var(--accent)}
 

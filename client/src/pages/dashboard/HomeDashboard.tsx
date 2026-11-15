@@ -1,3 +1,4 @@
+import BackArrow from '../../components/common/BackArrow';
 import { useEffect, useState } from 'react';
 import { budgetsApi } from '../../api/budgets.api';
 import { bankingApi } from '../../api/banking.api';
@@ -58,7 +59,7 @@ export default function HomeDashboard({ userName, onNavigate, onConnectBank = ()
   </div>;
 
   if (historyOpen) return <main className="home-screen home-history-screen">
-    <header className="home-detail-header"><button type="button" aria-label="Back to Home" onClick={() => { setHistoryOpen(false); setSelectedMonth(''); }}>‹</button><div><h1>Spending &amp; income</h1><p>Complete monthly history</p></div></header>
+    <header className="home-detail-header"><button type="button" aria-label="Back to Home" onClick={() => { setHistoryOpen(false); setSelectedMonth(''); }}><BackArrow /></button><div><h1>Spending &amp; income</h1><p>Complete monthly history</p></div></header>
     <div className="home-chart-legend"><span><i className="spending" />Spending</span><span><i className="income" />Income</span></div>
     {!history.data && !history.error && <p className="home-notice" role="status">Loading history…</p>}
     {history.error && <div className="home-notice home-error" role="alert"><p>{history.error}</p><button type="button" className="home-retry" onClick={() => void history.refresh()}>Retry</button></div>}

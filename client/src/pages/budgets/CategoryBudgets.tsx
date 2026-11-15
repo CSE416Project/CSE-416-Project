@@ -66,9 +66,9 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
   }, [selectedMonth]);
   const loadGroups = useCallback(async () => {
     const id = ++latest.current.groups;
-    try { const data = await budgetsApi.groups(); if (id === latest.current.groups) { setGroups(data.groups); setGroupsError(''); } }
+    try { const data = await budgetsApi.groups(selectedMonth || undefined); if (id === latest.current.groups) { setGroups(data.groups); setGroupsError(''); } }
     catch (error) { if (id === latest.current.groups) setGroupsError(errorMessage(error)); }
-  }, []);
+  }, [selectedMonth]);
   const loadMonthTransactions = useCallback(async () => {
     const id = ++latest.current.transactions;
     setTransactionsLoading(true);
@@ -161,11 +161,11 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
       <button type="button" role="tab" aria-selected={scope === 'group'} className={scope === 'group' ? 'active' : ''} onClick={() => setScope('group')}>Group</button>
     </div>
 
-    {scope === 'personal' && <label className="cb-month-picker">Budget month
-      <select value={selectedMonth || currentMonth} onChange={event => { latest.current.personal++; setPersonal(null); setPersonalError(''); setExportError(''); setSelectedMonth(event.target.value); }}>
+    <label className="cb-month-picker">Budget month
+      <span className="cb-month-control"><select value={selectedMonth || currentMonth} onChange={event => { latest.current.groups++; setGroups(null); setGroupsError(''); latest.current.personal++; setPersonal(null); setPersonalError(''); setExportError(''); setSelectedMonth(event.target.value); }}>
         {monthOptions.map(month => <option key={month.value} value={month.value}>{month.label}</option>)}
-      </select>
-    </label>}
+      </select></span>
+    </label>
     {scope === 'group' ? (!groups ? (groupsError ? retry(groupsError) : <p className="cb-notice" role="status">Loading your groups…</p>)
       : !activeGroup ? <p className="cb-notice" role="status">You're not in any active groups yet. Create one from the Groups tab.</p> : <>
       <div className="cb-group-picker" role="tablist" aria-label="Select group">
@@ -178,30 +178,36 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
 
       <section className="cb-hero" aria-label="Group budget summary">
         <strong className="cb-hero-amount">{formatCents(activeGroup.spentCents)} spent</strong>
-        <p className="cb-hero-sub">{activeGroup.plannedCents ? `of ${formatCents(activeGroup.plannedCents)} shared plan` : 'No shared plan set'} · {daysLeftLabel(activeGroup.daysLeft)}</p>
+        <p className="cb-hero-sub">{activeGroup.plannedCents ? `of ${formatCents(activeGroup.plannedCents)} shared plan` : 'No shared plan set'} · {historical ? 'Month ended' : daysLeftLabel(activeGroup.daysLeft)}</p>
         <div className="cb-hero-bar" role="presentation"><div style={{ width: `${groupPct}%` }} /></div>
-        <div className="cb-hero-meta">
-          <button type="button" onClick={() => setDetail({ kind: 'owes' })}>View who owes what ›</button>
-          {activeGroup.canEditPlan && <button type="button" onClick={() => setDetail({ kind: 'groupPlan' })}>Edit plan ›</button>}
-        </div>
+        {!historical && activeGroup.canEditPlan && <div className="cb-hero-meta">
+          <button type="button" onClick={() => setDetail({ kind: 'groupPlan' })}>Edit plan ›</button>
+        </div>}
       </section>
       {activeGroup.plannedCents > 0 && activeGroup.spentCents > activeGroup.plannedCents && <p className="cb-notice cb-warn" role="status">
-        Over the shared plan by {formatCents(activeGroup.spentCents - activeGroup.plannedCents)} this month.</p>}
+        Over the shared plan by {formatCents(activeGroup.spentCents - activeGroup.plannedCents)} for this month.</p>}
 
       <h2 className="cb-section-heading">Shared expenses</h2>
       {activeGroup.members.map(member => <div key={member.id} className="cb-category cb-member">
         <div className="cb-category-head">
           <span className="cb-member-name"><Avatar name={member.name} color={member.avatarColor} /><strong>{member.name}</strong></span>
-          <span className={member.oweCents ? 'cb-owe' : ''}>{member.oweCents ? `Owes ${formatCents(member.oweCents)}` : `${formatCents(member.paidCents)} paid`}</span>
+          <span className={!historical && member.oweCents ? 'cb-owe' : ''}>{!historical && member.oweCents ? `Owes ${formatCents(member.oweCents)}` : `${formatCents(member.paidCents)} paid`}</span>
         </div>
-        <div className="cb-category-bar" role="presentation"><div style={{ width: `${member.pct}%`, background: member.barColor }} /></div>
+        <div className="cb-category-bar" role="presentation"><div style={{ width: `${historical ? (activeGroup.spentCents ? member.paidCents / activeGroup.spentCents * 100 : 0) : member.pct}%`, background: historical ? 'var(--accent)' : member.barColor }} /></div>
       </div>)}
 
-      <div className="cb-notice cb-settle" role="status">
-        {remainingOwed === 0 ? <><strong>All settled up</strong><p>Nobody owes anything in this group right now.</p></> : <>
+      <h2 className="cb-section-heading">Current balances</h2>
+      <div className={`cb-balance-summary${remainingOwed === 0 ? ' is-settled' : ''}`} role="status">
+        <span className="cb-balance-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d={remainingOwed === 0 ? 'm5 12 4 4 10-10' : 'M4 8h15m-4-4 4 4-4 4M20 16H5m4-4-4 4 4 4'} />
+          </svg>
+        </span>
+        {remainingOwed === 0 ? <><strong>All settled up</strong><p>Nobody owes money in {activeGroup.name} right now.</p></> : <>
           <strong>{formatCents(remainingOwed)} left to settle</strong>
           <p>{settleUpBody(activeGroup)}</p></>}
       </div>
+      <button type="button" className="cb-review-all" onClick={() => setDetail({ kind: 'owes' })}>View who owes what ›</button>
 
     </>) : (!personal || !period ? (personalError ? retry(personalError) : <p className="cb-notice" role="status">Loading your budget…</p>) : <>
       <section className="cb-hero" aria-label="Budget summary">
@@ -229,7 +235,7 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
         <button type="button" className="cb-review-all" onClick={() => onOpenTransactions(activeMonth)}>View all transactions ›</button>
       </section>
 
-      {!personal.hasBankConnection && <p className="cb-notice" role="status">Group expense shares appear here automatically. Connect a bank account in Profile to include other spending.</p>}
+      {!personal.hasBankConnection && <p className="cb-notice" role="status">Connect a bank account in Profile to see your bank transactions here.</p>}
       {overLimit.length > 0 && <p className="cb-notice cb-warn" role="status">Over budget for this month: {overLimit.map(item => item.label).join(', ')}.</p>}
 
       {historical && personal.hasSavedLimits === false && <p className="cb-notice">No budget limits were saved for this month. Your actual spending is shown below.</p>}

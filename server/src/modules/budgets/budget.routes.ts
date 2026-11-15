@@ -79,7 +79,7 @@ budgetsRouter.get('/history', async (request, response) => {
 });
 
 budgetsRouter.get('/groups', async (request, response) => {
-  response.json({ groups: await groupBudgets(request.userId!) });
+  response.json({ groups: await groupBudgets(request.userId!, selectedMonth(request.query.month)) });
 });
 
 budgetsRouter.put('/groups/:groupId/plan', async (request, response) => {
