@@ -41,20 +41,9 @@ export type CategoryTransaction = ApiCategoryTransaction & { dateLabel: string }
 export const toCategoryTransactions = (items: ApiCategoryTransaction[]): CategoryTransaction[] =>
   items.map(item => ({ ...item, dateLabel: new Date(`${item.date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) }));
 
-export type CategoryInsight = { item: CategoryBudget; sharePct: number; usedPct: number; projectedCents: number; overPace: boolean };
-
-// Spend share, budget used, and a straight-line month-end projection per category.
-export function categoryInsights(items: CategoryBudget[], daysLeft: number, daysInPeriod: number): CategoryInsight[] {
-  const total = totalSpentCents(items);
-  const elapsed = Math.max(1, daysInPeriod - daysLeft);
-  return items.map(item => {
-    const projectedCents = Math.round((item.spentCents / elapsed) * daysInPeriod);
-    return {
-      item,
-      sharePct: total ? (item.spentCents / total) * 100 : 0,
-      usedPct: item.plannedCents ? (item.spentCents / item.plannedCents) * 100 : 0,
-      projectedCents,
-      overPace: item.plannedCents > 0 && projectedCents > item.plannedCents,
-    };
-  });
+// Categories without a limit show their share of spending; limited categories show limit usage.
+export function categorySpending(item: CategoryBudget, total: number) {
+  const sharePct = total > 0 ? item.spentCents / total * 100 : 0;
+  const usedPct = item.plannedCents > 0 ? item.spentCents / item.plannedCents * 100 : 0;
+  return { sharePct, usedPct, barPct: Math.min(100, Math.max(0, item.plannedCents > 0 ? usedPct : sharePct)) };
 }

@@ -2,7 +2,7 @@
 
 **Team:** Eva · Vivian · Nicole · Sidhya  
 **Course:** CSE 416 · Software Engineering  
-**Implementation status:** November 14, 2026 · Milestone 5 integration and release preparation
+**Implementation status:** November 15, 2026 · Milestone 5 integration and release preparation
 
 ## Project Overview
 
@@ -15,6 +15,8 @@ The app records that payments were sent and received, but it does not move money
 ## Latest updates and database migration status
 
 The latest changes include:
+
+- Spending breakdown is consolidated into Category plan, replacing the separate View insights page. Each category shows spending and its share of the selected month; bars show spending share without a limit, or limit usage when a limit is set, with explicit over-limit amounts. Category transaction drill-downs and editing limits remain available.
 
 - A single Recent transactions card on Personal Budget, with an attention icon/count when categorization is needed. Transaction review has visible All, Needs category, and Excluded tabs. Needs category shows outstanding items across all months, supports search, and clears its badge as items are saved; All and Excluded retain the selected month.
 - Pull-to-refresh reloads the current screen’s data in place, including transaction review, budgets, banking, and groups.
@@ -183,7 +185,7 @@ The application keeps Plaid's provider category as source data while storing the
 
 - Set and edit monthly limits for Dining, Groceries, Transit, Shopping, and Other.
 - Calculate current-month spending from positive transactions in visible connected bank accounts plus the user's shares of group expenses.
-- View spending and remaining amounts by category.
+- View spending and its percentage of the month’s total directly in Category plan. A category without a limit uses a colored spending-share bar; a category with a limit shows spent/limit, percent used, and an over-limit amount when applicable.
 - Open a category to view its contributing transactions.
 - Categorize each group-expense share independently for the participant's own budget.
 - For a linked expense, exclude the payer's full bank charge and count only that payer's share, preventing double counting. Other participants' shares count even when they do not have a corresponding bank charge.
@@ -191,7 +193,7 @@ The application keeps Plaid's provider category as source data while storing the
 - Display an over-budget item on the Home dashboard when a category exceeds its limit.
 - Show a three-month spending and income comparison on Home using the same linked-charge deduplication and group-share totals, with exact values on hover, focus, or selection.
 - Open complete spending and income history by calendar year, with 12 horizontally scrollable months per year.
-- Select the current month or any of the previous 24 months in Personal Budget. Past months are read-only and use current limits because historical limit snapshots were not stored.
+- Select the current month or any of the previous 24 months in Personal Budget. Past months are read-only and use saved monthly limits; data from before monthly snapshots were introduced cannot be reconstructed.
 - Export the selected month's categorized transactions as CSV.
 - Display the most recently added group expense and a prominent to-do summary on Home; detailed payment cards are on Groups.
 
@@ -365,7 +367,7 @@ The web client and Express API now run together on Vercel, using the existing Pr
 | PostgreSQL | Prisma Postgres Free | Server-only TLS connection; existing database retained |
 | iPhone beta | Capacitor / TestFlight | Loads the same HTTPS application; native Google SDK and Capacitor configuration changes require a new uploaded binary |
 
-The function exports the Express app without starting the standalone listener or background timers. Production builds apply versioned migrations, including temporary receipt-upload tables. The latest merged release contains 26 migration directories and no new database schema changes; deploy checks pending migrations without resetting existing data. Preview builds do not migrate databases. The former Render service configuration remains available for rollback; do not run both services' background schedules concurrently.
+The function exports the Express app without starting the standalone listener or background timers. Production builds apply versioned migrations, including temporary receipt-upload tables. The current release contains 27 migration directories, including month-specific group plans; deploy checks pending migrations without resetting existing data. Preview builds do not migrate databases. The former Render service configuration remains available for rollback; do not run both services' background schedules concurrently.
 
 Production verification passed for account registration/login, session persistence, group creation/listing/deletion, receipt conversion/storage/download, production Plaid Link-token creation, and Azure parsing of a synthetic receipt. Disposable test records were removed. Google sign-in challenge creation was verified; a full Google account sign-in and a real bank connection still require an interactive user test.
 

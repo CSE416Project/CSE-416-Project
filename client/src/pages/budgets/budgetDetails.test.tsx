@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ApiGroupBudget, ApiPersonalBudget, CategoryKey } from '../../api/budgets.api';
 import type { ApiBankTransaction } from '../../api/banking.api';
 import CategoryBudgets from './CategoryBudgets';
-import { budgetPeriod, categoryInsights, isOverLimit, toCategoryBudgets, toCategoryTransactions } from './categoryPlan';
+import { budgetPeriod, categorySpending, isOverLimit, toCategoryBudgets, toCategoryTransactions } from './categoryPlan';
 import { settleUpBody, settlementsFor, toGroupBudget, totalOwedCents } from './groupBudgetPlan';
 
 const txn = (id: string, merchant: string, amountCents: number, date = '2026-09-28') => ({ id, merchant, date, amountCents, pending: false });
@@ -57,11 +57,11 @@ function stubApi(handlers: Record<string, (init: RequestInit | undefined) => Res
 afterEach(() => vi.unstubAllGlobals());
 
 describe('budget helpers', () => {
-  it('flags categories projected over plan, ignoring categories with no limit', () => {
-    const budgets = toCategoryBudgets(personalFixture().categories);
-    expect(categoryInsights(budgets, 12, 30).filter(i => i.overPace).map(i => i.item.key)).toEqual(['dining', 'shopping']);
-    const unlimited = toCategoryBudgets(personalFixture({ dining: { plannedCents: 0 } }).categories);
-    expect(categoryInsights(unlimited, 12, 30).find(i => i.item.key === 'dining')?.overPace).toBe(false);
+  it('uses spending share for unlimited categories and clamps over-limit bars', () => {
+    const item = toCategoryBudgets(personalFixture().categories)[0]!;
+    expect(categorySpending({ ...item, plannedCents: 0, spentCents: 2500 }, 10000)).toEqual({ sharePct: 25, usedPct: 0, barPct: 25 });
+    expect(categorySpending({ ...item, plannedCents: 1000, spentCents: 2500 }, 10000)).toEqual({ sharePct: 25, usedPct: 250, barPct: 100 });
+    expect(categorySpending({ ...item, plannedCents: 0, spentCents: 0 }, 0)).toEqual({ sharePct: 0, usedPct: 0, barPct: 0 });
   });
   it('treats a $0 limit as no limit', () => {
     const [dining] = toCategoryBudgets(personalFixture({ dining: { plannedCents: 0, spentCents: 500 } }).categories);
@@ -178,16 +178,25 @@ describe('budget drill-downs', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Transit transactions' }));
     expect(screen.getByText('No transactions in this category yet this month.')).toBeInTheDocument();
   });
-  it('opens insights and drills into a category, returning to insights', async () => {
-    stubApi();
+  it('shows spending breakdown and limit usage on the plan without a separate insights page', async () => {
+    stubApi({}, { personal: personalFixture({ dining: { plannedCents: 0 } }) });
     render(<CategoryBudgets onOpenSimulator={() => {}} />);
-    fireEvent.click(await screen.findByRole('button', { name: /View insights/ }));
-    expect(screen.getByText('Spending insights')).toBeInTheDocument();
-    expect(screen.getByText('On pace to go over: Dining, Shopping.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Shopping/ }));
+    const dining = await screen.findByRole('button', { name: 'Dining transactions' });
+    expect(screen.queryByRole('button', { name: /View insights/ })).not.toBeInTheDocument();
+    expect(dining).toHaveTextContent('$248.00 spent');
+    expect(dining).toHaveTextContent('23% of monthly spending');
+    expect(dining).toHaveTextContent('No limit set');
+    const share = within(dining).getByRole('progressbar', { name: 'Dining share of monthly spending' });
+    expect(Number(share.getAttribute('aria-valuenow'))).toBeCloseTo(24800 / 105750 * 100);
+    const shopping = screen.getByRole('button', { name: 'Shopping transactions' });
+    expect(shopping).toHaveTextContent('$301.00 / $325.00');
+    expect(shopping).toHaveTextContent('28% of monthly spending');
+    expect(shopping).toHaveTextContent('93% of limit used');
+    expect(Number(within(shopping).getByRole('progressbar').getAttribute('aria-valuenow'))).toBeCloseTo(30100 / 32500 * 100);
+    fireEvent.click(shopping);
     expect(screen.getByText('Amazon')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Budget/ }));
-    expect(screen.getByText('Spending insights')).toBeInTheDocument();
+    expect(screen.getByText('Category plan')).toBeInTheDocument();
   });
 });
 
@@ -302,8 +311,8 @@ it('loads a selected past month and makes historical limits read-only', async ()
   await waitFor(() => expect(calls.some(call => call.url.includes(`month=${month}`))).toBe(true));
   expect(await screen.findByText(/No budget limits were saved for this month/)).toBeVisible();
   expect(screen.queryByRole('button', { name: 'Edit limits' })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'View insights ›' }));
-  expect(screen.getByRole('region', { name: 'Total spent' })).toBeVisible();
+  expect(screen.getByRole('region', { name: 'Budget summary' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Dining transactions' })).toHaveTextContent('23% of monthly spending');
   expect(screen.queryByText(/projected/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/at this pace|spent so far|On pace to go over/)).not.toBeInTheDocument();
 });
@@ -317,4 +326,27 @@ it('keeps a single transaction card without an attention badge when everything i
   expect(screen.queryByRole('region', { name: 'Transactions to categorize' })).not.toBeInTheDocument();
   expect(screen.queryByText(/Needs category in transaction review/)).not.toBeInTheDocument();
   expect(screen.getAllByRole('button', { name: 'View all transactions ›' })).toHaveLength(1);
+});
+
+
+it('shows zero spending safely when no limits are set', async () => {
+  const personal = personalFixture();
+  personal.categories = personal.categories.map(item => ({ ...item, spentCents: 0, plannedCents: 0 }));
+  stubApi({}, { personal });
+  render(<CategoryBudgets onOpenSimulator={() => {}} />);
+  const dining = await screen.findByRole('button', { name: 'Dining transactions' });
+  expect(dining).toHaveTextContent('$0.00 spent');
+  expect(dining).toHaveTextContent('0% of monthly spending');
+  expect(dining).toHaveTextContent('No limit set');
+  expect(within(dining).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+});
+
+it('shows actual over-limit usage while keeping the progress bar bounded', async () => {
+  stubApi({}, { personal: personalFixture({ dining: { plannedCents: 10000, spentCents: 25000 } }) });
+  render(<CategoryBudgets onOpenSimulator={() => {}} />);
+  const dining = await screen.findByRole('button', { name: 'Dining transactions' });
+  expect(dining).toHaveTextContent('250% of limit used');
+  expect(dining).toHaveTextContent('$150.00 over limit');
+  expect(within(dining).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
+  expect(within(dining).getByRole('progressbar')).toHaveAttribute('aria-valuetext', '250% of limit used');
 });

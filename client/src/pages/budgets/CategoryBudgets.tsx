@@ -7,14 +7,14 @@ import { budgetsApi, type ApiGroupBudget, type ApiPersonalBudget } from '../../a
 import { ApiError } from '../../api/client';
 import { relativeTime } from '../../utils/dates';
 import { formatCents } from '../expenses/split';
-import { type CategoryKey, budgetPeriod, categoryPct, daysLeftLabel, isOverLimit, toCategoryBudgets, toCategoryTransactions, totalPlannedCents, totalSpentCents } from './categoryPlan';
+import { type CategoryKey, budgetPeriod, categorySpending, daysLeftLabel, isOverLimit, toCategoryBudgets, toCategoryTransactions, totalPlannedCents, totalSpentCents } from './categoryPlan';
 import { groupBudgetPct, settleUpBody, toGroupBudget, totalOwedCents } from './groupBudgetPlan';
-import { CategoryTransactions, EditGroupPlan, EditLimits, SpendingInsights, WhoOwesWhat } from './CategoryBudgetDetails';
+import { CategoryTransactions, EditGroupPlan, EditLimits, WhoOwesWhat } from './CategoryBudgetDetails';
 import { useLiveData } from '../dashboard/useLiveData';
 import './categoryBudgets.css';
 
 type BudgetScope = 'personal' | 'group';
-type Detail = { kind: 'insights' } | { kind: 'category'; key: CategoryKey; from: 'budget' | 'insights' } | { kind: 'owes' } | { kind: 'limits' } | { kind: 'groupPlan' } | null;
+type Detail = { kind: 'category'; key: CategoryKey } | { kind: 'owes' } | { kind: 'limits' } | { kind: 'groupPlan' } | null;
 
 const REFRESH_MS = 60_000;
 const errorMessage = (error: unknown) => error instanceof ApiError ? error.message : 'Unable to reach the server. Try again.';
@@ -40,7 +40,7 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
   useEffect(() => {
     if (!expenseTarget) return;
     const key = (['dining', 'groceries', 'transit', 'shopping', 'other'].includes(expenseTarget.category) ? expenseTarget.category : 'other') as CategoryKey;
-    setScope('personal'); setSelectedMonth(''); setDetail({ kind: 'category', key, from: 'budget' });
+    setScope('personal'); setSelectedMonth(''); setDetail({ kind: 'category', key });
   }, [expenseTarget]);
   const [personal, setPersonal] = useState<ApiPersonalBudget | null>(null);
   const [groups, setGroups] = useState<ApiGroupBudget[] | null>(null);
@@ -131,9 +131,8 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
     const item = detail.kind === 'category' ? budgets.find(c => c.key === detail.key) : undefined;
     const showGroup = (detail.kind === 'owes' || detail.kind === 'groupPlan') ? activeGroup : undefined;
     return <main className="cb-screen">
-      {detail.kind === 'insights' && period && <SpendingInsights historical={historical} budgets={budgets} period={period} onBack={() => setDetail(null)} onSelectCategory={key => setDetail({ kind: 'category', key, from: 'insights' })} />}
       {item && period && personal && detail.kind === 'category' && <CategoryTransactions highlightId={expenseTarget ? `share-${expenseTarget.expenseId}` : undefined} item={item} period={period} transactions={toCategoryTransactions(personal.transactions[item.key])}
-        onBack={() => { onClearExpenseTarget?.(); setDetail(detail.from === 'insights' ? { kind: 'insights' } : null); }} />}
+        onBack={() => { onClearExpenseTarget?.(); setDetail(null); }} />}
       {detail.kind === 'limits' && personal && <EditLimits budgets={budgets} onCancel={() => setDetail(null)} onSave={saveLimits} />}
       {detail.kind === 'owes' && showGroup && <WhoOwesWhat group={showGroup} onBack={() => setDetail(null)} />}
       {detail.kind === 'groupPlan' && showGroup && <EditGroupPlan group={showGroup} onCancel={() => setDetail(null)} onSave={plannedCents => saveGroupPlan(showGroup.id, plannedCents)} />}
@@ -216,7 +215,6 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
         <div className="cb-hero-bar" role="presentation"><div style={{ width: `${pct}%` }} /></div>
         <div className="cb-hero-meta">
           <span>{personal.lastSyncedAt ? `↻ Bank synced ${relativeTime(personal.lastSyncedAt)}` : '↻ No bank synced yet'}</span>
-          <button type="button" onClick={() => setDetail({ kind: 'insights' })}>View insights ›</button>
         </div>
       </section>
       <section className="cb-review-card cb-transaction-preview" aria-label="Recent transactions">
@@ -241,14 +239,26 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
       {historical && personal.hasSavedLimits === false && <p className="cb-notice">No budget limits were saved for this month. Your actual spending is shown below.</p>}
       <div className="cb-section-row"><h2 className="cb-section-heading">Category plan</h2>
         {!historical && <button type="button" className="cb-simulator-link" onClick={() => setDetail({ kind: 'limits' })}>Edit limits</button>}</div>
-      {budgets.map(item => <button key={item.key} type="button" className="cb-category cb-row-button"
-        aria-label={`${item.label} transactions`} onClick={() => setDetail({ kind: 'category', key: item.key, from: 'budget' })}>
-        <div className="cb-category-head">
-          <strong>{item.label}</strong>
-          <span>{formatCents(item.spentCents)} / {formatCents(item.plannedCents)}</span>
-        </div>
-        <div className="cb-category-bar" role="presentation"><div style={{ width: `${categoryPct(item)}%`, background: isOverLimit(item) ? 'var(--danger)' : item.color }} /></div>
-      </button>)}
+      {budgets.map(item => {
+        const { sharePct, usedPct, barPct } = categorySpending(item, spent);
+        const limited = item.plannedCents > 0;
+        return <button key={item.key} type="button" className="cb-category cb-row-button cb-category-summary"
+          aria-label={`${item.label} transactions`} aria-describedby={`category-summary-${item.key}`} onClick={() => setDetail({ kind: 'category', key: item.key })}>
+          <div className="cb-category-head">
+            <strong>{item.label}</strong>
+            <span>{limited ? `${formatCents(item.spentCents)} / ${formatCents(item.plannedCents)}` : `${formatCents(item.spentCents)} spent`}</span>
+          </div>
+          <div className="cb-category-bar" role="progressbar" aria-label={`${item.label} ${limited ? 'limit usage' : 'share of monthly spending'}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={barPct}
+            aria-valuetext={limited ? `${Math.round(usedPct)}% of limit used` : `${Math.round(sharePct)}% of monthly spending`}>
+            <div style={{ width: `${barPct}%`, background: isOverLimit(item) ? 'var(--danger)' : item.color }} />
+          </div>
+          <div className="cb-category-stats" id={`category-summary-${item.key}`}>
+            <span>{Math.round(sharePct)}% of monthly spending</span>
+            <span>{limited ? `${Math.round(usedPct)}% of limit used` : 'No limit set'}</span>
+            {isOverLimit(item) && <span className="cb-category-over">{formatCents(item.spentCents - item.plannedCents)} over limit</span>}
+          </div>
+        </button>;
+      })}
 
       <button type="button" className="cb-simulator-link cb-export" disabled={exporting} onClick={() => void exportCsv()}>{exporting ? 'Preparing…' : 'Export selected month (CSV)'}</button>
       {exportError && <p className="cb-notice cb-warn" role="alert">{exportError}</p>}

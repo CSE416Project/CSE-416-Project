@@ -3,7 +3,7 @@ import Avatar from '../../components/common/Avatar';
 import { ApiError } from '../../api/client';
 import { formatCents } from '../expenses/split';
 import { useState } from 'react';
-import { MAX_LIMIT_CENTS, categoryInsights, daysLeftLabel, categoryPct, totalSpentCents, totalPlannedCents, type BudgetPeriod, type CategoryBudget, type CategoryKey, type CategoryTransaction } from './categoryPlan';
+import { MAX_LIMIT_CENTS, categoryPct, type BudgetPeriod, type CategoryBudget, type CategoryKey, type CategoryTransaction } from './categoryPlan';
 import { settlementsFor, totalOwedCents, type GroupBudget } from './groupBudgetPlan';
 
 const Back = ({ label, onBack }: { label: string; onBack: () => void }) =>
@@ -36,34 +36,6 @@ export function CategoryTransactions({ item, transactions, period, onBack, highl
         </div>
       </div>}
     </div>)}
-  </>;
-}
-
-export function SpendingInsights({ budgets, period, onBack, onSelectCategory, historical = false }: { historical?: boolean; budgets: CategoryBudget[]; period: BudgetPeriod; onBack: () => void; onSelectCategory: (key: CategoryBudget['key']) => void }) {
-  const insights = categoryInsights(budgets, period.daysLeft, period.daysInMonth);
-  const spent = totalSpentCents(budgets);
-  const planned = totalPlannedCents(budgets);
-  const projected = historical ? spent : insights.reduce((sum, i) => sum + i.projectedCents, 0);
-  const top = [...insights].sort((a, b) => b.item.spentCents - a.item.spentCents)[0];
-  const overPace = insights.filter(i => i.overPace);
-  return <>
-    <Back label="Budget" onBack={onBack} />
-    <header className="cb-header"><h1>Spending insights</h1><p>{period.monthLabel} · {historical ? 'Month ended' : daysLeftLabel(period.daysLeft)}</p></header>
-    <section className="cb-hero" aria-label={historical ? 'Total spent' : 'Projection'}>
-      <strong className="cb-hero-amount">{formatCents(projected)} {historical ? 'total spent' : 'projected'}</strong>
-      <p className="cb-hero-sub">{planned === 0 ? 'Set category limits to compare against a plan' : `${projected <= planned ? `${formatCents(planned - projected)} under` : `${formatCents(projected - planned)} over`} your ${formatCents(planned)} plan${historical ? '' : ' at this pace'}`}</p>
-      {!historical && <p className="cb-hero-sub">{formatCents(spent)} spent so far</p>}
-    </section>
-    {top && top.item.spentCents > 0 && <p className="cb-notice" role="status">{top.item.label} is your biggest category at {Math.round(top.sharePct)}% of spending.</p>}
-    {overPace.length > 0 && <p className="cb-notice cb-warn" role="status">
-      {historical ? 'Over budget:' : 'On pace to go over:'} {overPace.map(i => i.item.label).join(', ')}.
-    </p>}
-    <h2 className="cb-section-heading">Where it went</h2>
-    {insights.map(i => <button key={i.item.key} type="button" className="cb-category cb-row-button" onClick={() => onSelectCategory(i.item.key)}>
-      <div className="cb-category-head"><strong>{i.item.label}</strong><span>{Math.round(i.sharePct)}% of spending</span></div>
-      <div className="cb-category-bar" role="presentation"><div style={{ width: `${i.sharePct}%`, background: i.item.color }} /></div>
-      <p className="cb-detail-note">{i.item.plannedCents ? `${Math.round(i.usedPct)}% of budget used` : 'No limit set'} · {historical ? 'total spent' : 'projected'} {formatCents(historical ? i.item.spentCents : i.projectedCents)}{i.overPace ? ' (over)' : ''}</p>
-    </button>)}
   </>;
 }
 
