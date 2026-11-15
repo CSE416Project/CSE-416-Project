@@ -75,7 +75,7 @@ The table above lists repository defaults. Increment `CURRENT_PROJECT_VERSION` a
 
 ### Google
 
-Browsers retain Google Identity Services. On iOS, the app uses Google's native SDK through `DivvyGoogleSignInPlugin`, with the configured iOS client and callback scheme for `com.cse416.divvy`. Keep the backend and browser configured with the Web client ID. Run `npm run mobile:google -- --check` after syncing. See [Google setup](google-auth.md#configure-the-ios-build). A new TestFlight binary is required; verify sign-in, sign-up, account linking, recovery, and cancellation on a physical iPhone. The simulator CI job is currently queued and native compilation has not yet been verified.
+Browsers retain Google Identity Services. On iOS, the app uses Google's native SDK through `DivvyGoogleSignInPlugin`, with the configured iOS client and callback scheme for `com.cse416.divvy`. Keep the backend and browser configured with the Web client ID. Run `npm run mobile:google -- --check` after syncing. See [Google setup](google-auth.md#configure-the-ios-build). A new TestFlight binary is required; verify sign-in, sign-up, account linking, recovery, and cancellation on a physical iPhone. Main-branch CI run 43116411126 passed unsigned iOS simulator compilation. Signing, device behavior, and Apple distribution still require Xcode/device validation.
 
 ### Plaid
 

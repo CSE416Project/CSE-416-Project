@@ -20,8 +20,7 @@ it('shows all transactions, then categorizes only the item that needs review', a
   vi.stubGlobal('fetch', fetchMock);
   render(<TransactionReviewCenter onBack={() => {}} />);
 
-  fireEvent.click(await screen.findByRole('button', { name: 'Filter transactions' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Needs category' }));
+  fireEvent.click(await screen.findByRole('tab', { name: /Needs category/ }));
   fireEvent.click(await screen.findByRole('button', { name: /Corner Cafe/ }));
   fireEvent.change(screen.getByLabelText('CATEGORY'), { target: { value: 'shopping' } });
   fireEvent.change(screen.getByLabelText('NOTE'), { target: { value: 'Office supplies' } });
@@ -32,6 +31,7 @@ it('shows all transactions, then categorizes only the item that needs review', a
     body: JSON.stringify({ category: 'shopping', excluded: false, note: 'Office supplies', reviewed: true, splits: [] }),
   })));
   expect(await screen.findByText('Everything is categorized')).toBeInTheDocument();
+  expect(screen.queryByLabelText('1 transaction needs categorization')).not.toBeInTheDocument();
 });
 
 it('opens with the requested budget month and filters from the popup', async () => {
@@ -92,4 +92,56 @@ it('lets a user correct a deposit so it counts as income', async () => {
   await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining('/banking/transactions/deposit-1/review'), expect.objectContaining({
     body: JSON.stringify({ category: 'income', excluded: false, note: null, reviewed: true, splits: [] }),
   })));
+});
+
+
+it('shows the global attention count and finds older uncategorized transactions without a month restriction', async () => {
+  const categorized = { ...transaction, id: 'categorized', merchant: 'Reviewed Cafe', reviewed: true, needsReview: false };
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(String(input), 'http://localhost');
+    const needsCategory = url.searchParams.get('status') === 'unreviewed';
+    return new Response(JSON.stringify({ transactions: needsCategory ? [transaction] : [categorized] }), { status: 200 });
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  render(<TransactionReviewCenter initialMonth="2026-11" onBack={() => {}} />);
+  await screen.findByRole('button', { name: /Reviewed Cafe/ });
+  const tab = screen.getByRole('tab', { name: /Needs category/ });
+  expect(await screen.findByLabelText('1 transaction needs categorization')).toBeVisible();
+  fireEvent.click(tab);
+  expect(await screen.findByRole('button', { name: /Corner Cafe/ })).toBeVisible();
+  expect(screen.queryByRole('button', { name: /Reviewed Cafe/ })).not.toBeInTheDocument();
+  expect(tab).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByText('Needs category · All months')).toBeVisible();
+  const categoryRequests = fetchMock.mock.calls.map(([input]) => new URL(String(input), 'http://localhost')).filter(url => url.searchParams.get('status') === 'unreviewed');
+  expect(categoryRequests.every(url => !url.searchParams.has('month'))).toBe(true);
+  fireEvent.click(screen.getByRole('tab', { name: 'All' }));
+  await screen.findByRole('button', { name: /Reviewed Cafe/ });
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('status=all&month=2026-11'), expect.anything()));
+});
+
+it('keeps the needs-category tab without an attention badge when there is nothing to categorize', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ transactions: [] }), { status: 200 })));
+  render(<TransactionReviewCenter onBack={() => {}} />);
+  await screen.findByText('No matching transactions');
+  const tab = screen.getByRole('tab', { name: 'Needs category' });
+  fireEvent.keyDown(screen.getByRole('tab', { name: 'All' }), { key: 'ArrowRight' });
+  expect(tab).toHaveFocus();
+  expect(tab).toHaveAttribute('aria-selected', 'true');
+  expect(await screen.findByText('Everything is categorized')).toBeVisible();
+});
+
+
+it('keeps the attention count while a search has no matches', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(String(input), 'http://localhost');
+    return new Response(JSON.stringify({ transactions: url.searchParams.has('query') ? [] : [transaction] }), { status: 200 });
+  }));
+  render(<TransactionReviewCenter onBack={() => {}} />);
+  await screen.findByLabelText('1 transaction needs categorization');
+  fireEvent.click(screen.getByRole('tab', { name: /Needs category/ }));
+  await screen.findByRole('button', { name: /Corner Cafe/ });
+  fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'no match' } });
+  expect(await screen.findByText('No matching transactions')).toBeVisible();
+  expect(screen.queryByText('Everything is categorized')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('1 transaction needs categorization')).toBeVisible();
 });

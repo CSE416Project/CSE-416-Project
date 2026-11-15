@@ -108,11 +108,10 @@ describe('personal budget from the API', () => {
     expect(screen.queryByRole('button', { name: 'Transactions ›' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'View all transactions ›' }));
     expect(onOpenTransactions).toHaveBeenCalledWith(new Date().toISOString().slice(0, 7));
-    const review = await screen.findByRole('region', { name: 'Transactions to categorize' });
-    expect(review).toHaveTextContent('1 transaction could not be categorized automatically');
-    expect(review).toHaveTextContent('Spotify');
-    fireEvent.click(screen.getByRole('button', { name: 'Categorize transactions ›' }));
-    expect(onOpenTransactions).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('region', { name: 'Transactions to categorize' })).not.toBeInTheDocument();
+    expect(preview).toHaveTextContent('Needs category in transaction review · 1 across all months');
+    expect(screen.getByLabelText('1 transaction needs categorization across all months')).toBeVisible();
+    expect(onOpenTransactions).toHaveBeenCalledTimes(1);
   });
   it('does not fetch while its tab is hidden, then loads when shown', async () => {
     const calls = stubApi();
@@ -293,4 +292,15 @@ it('loads a selected past month and makes historical limits read-only', async ()
   expect(screen.getByRole('region', { name: 'Total spent' })).toBeVisible();
   expect(screen.queryByText(/projected/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/at this pace|spent so far|On pace to go over/)).not.toBeInTheDocument();
+});
+
+
+it('keeps a single transaction card without an attention badge when everything is categorized', async () => {
+  stubApi({}, { transactions: [] });
+  render(<CategoryBudgets onOpenSimulator={() => {}} />);
+  const preview = await screen.findByRole('region', { name: 'Recent transactions' });
+  expect(preview).toHaveTextContent('No transactions for this month yet.');
+  expect(screen.queryByRole('region', { name: 'Transactions to categorize' })).not.toBeInTheDocument();
+  expect(screen.queryByText(/Needs category in transaction review/)).not.toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'View all transactions ›' })).toHaveLength(1);
 });

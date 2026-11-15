@@ -8,7 +8,7 @@ Verified on production: health, protected scheduler authentication, registration
 
 The November 10 cutover CI baseline passed migrations, lint, typechecking, 214 frontend tests, 251 backend tests, both API collections, builds, and 11 browser tests.
 
-The November 11 release includes merged PRs #71 (native Google sign-in) and #72 (mobile layout and stable group avatars). Local lint, typechecking, 223 frontend tests, and the production build passed. The new GitHub Actions runs remain queued; the new iOS simulator build job has not yet verified compilation. There are 26 existing database migrations and no new schema changes in these merges. Production deployment runs `prisma migrate deploy` against the existing Prisma database and preserves accounts and demo content.
+The November 11 release includes merged PRs #71 (native Google sign-in) and #72 (mobile layout and stable group avatars). Local lint, typechecking, 223 frontend tests, and the production build passed. Subsequent main-branch CI (run 43116411126) passed both the application quality checks and unsigned iOS simulator compilation after the native Google bridge fix. There are 26 existing database migrations and no new schema changes in these merges. Production deployment runs `prisma migrate deploy` against the existing Prisma database and preserves accounts and demo content.
 
 ## Configuration
 
@@ -40,3 +40,7 @@ The Hobby-compatible schedule is daily at 15:00 UTC. Vercel Hobby does not promi
 4. With authorized test accounts, verify sign-in/session persistence, group reads/writes, settlement actions, and owner isolation for receipt uploads. Verify a large PDF attachment and a HEIC conversion on the hosted deployment.
 5. Verify Google login, production Plaid Link configuration, and Azure receipt parsing with authorized inputs. Never log access tokens or financial records. Verify the cron returns 401 without its secret; only invoke a valid production job when intended emails and maintenance are authorized.
 6. Keep Render suspended as a rollback option. The iOS wrapper loads the same hostname, so API/web-only changes are available immediately. The native Google SDK and mobile configuration changes in this release require a new Xcode archive and TestFlight upload.
+
+## Consolidated transaction review
+
+The Personal Budget page has one recent-transaction card. Outstanding categorization is indicated on that card and on the visible Needs category tab in transaction review. That tab includes all months, so older items remain reachable; the other tabs keep the selected month. This release changes client presentation only, with no new database migration and no production reset or seed. It is delivered through the hosted web client used by the current iOS wrapper.

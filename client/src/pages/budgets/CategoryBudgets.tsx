@@ -7,7 +7,7 @@ import { budgetsApi, type ApiGroupBudget, type ApiPersonalBudget } from '../../a
 import { ApiError } from '../../api/client';
 import { relativeTime } from '../../utils/dates';
 import { formatCents } from '../expenses/split';
-import { type CategoryKey, budgetPeriod, categoryPct, isOverLimit, toCategoryBudgets, toCategoryTransactions, totalPlannedCents, totalSpentCents } from './categoryPlan';
+import { type CategoryKey, budgetPeriod, categoryPct, daysLeftLabel, isOverLimit, toCategoryBudgets, toCategoryTransactions, totalPlannedCents, totalSpentCents } from './categoryPlan';
 import { groupBudgetPct, settleUpBody, toGroupBudget, totalOwedCents } from './groupBudgetPlan';
 import { CategoryTransactions, EditGroupPlan, EditLimits, SpendingInsights, WhoOwesWhat } from './CategoryBudgetDetails';
 import { useLiveData } from '../dashboard/useLiveData';
@@ -40,7 +40,7 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
   useEffect(() => {
     if (!expenseTarget) return;
     const key = (['dining', 'groceries', 'transit', 'shopping', 'other'].includes(expenseTarget.category) ? expenseTarget.category : 'other') as CategoryKey;
-    setScope('personal'); setDetail({ kind: 'category', key, from: 'budget' });
+    setScope('personal'); setSelectedMonth(''); setDetail({ kind: 'category', key, from: 'budget' });
   }, [expenseTarget]);
   const [personal, setPersonal] = useState<ApiPersonalBudget | null>(null);
   const [groups, setGroups] = useState<ApiGroupBudget[] | null>(null);
@@ -178,7 +178,7 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
 
       <section className="cb-hero" aria-label="Group budget summary">
         <strong className="cb-hero-amount">{formatCents(activeGroup.spentCents)} spent</strong>
-        <p className="cb-hero-sub">{activeGroup.plannedCents ? `of ${formatCents(activeGroup.plannedCents)} shared plan` : 'No shared plan set'} · {activeGroup.daysLeft} days left</p>
+        <p className="cb-hero-sub">{activeGroup.plannedCents ? `of ${formatCents(activeGroup.plannedCents)} shared plan` : 'No shared plan set'} · {daysLeftLabel(activeGroup.daysLeft)}</p>
         <div className="cb-hero-bar" role="presentation"><div style={{ width: `${groupPct}%` }} /></div>
         <div className="cb-hero-meta">
           <button type="button" onClick={() => setDetail({ kind: 'owes' })}>View who owes what ›</button>
@@ -206,7 +206,7 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
     </>) : (!personal || !period ? (personalError ? retry(personalError) : <p className="cb-notice" role="status">Loading your budget…</p>) : <>
       <section className="cb-hero" aria-label="Budget summary">
         <strong className="cb-hero-amount">{formatCents(spent)} spent</strong>
-        <p className="cb-hero-sub">{planned ? `of ${formatCents(planned)} planned` : 'No category limits set'} · {historical ? 'Month ended' : `${period.daysLeft} days left`}</p>
+        <p className="cb-hero-sub">{planned ? `of ${formatCents(planned)} planned` : 'No category limits set'} · {historical ? 'Month ended' : daysLeftLabel(period.daysLeft)}</p>
         <div className="cb-hero-bar" role="presentation"><div style={{ width: `${pct}%` }} /></div>
         <div className="cb-hero-meta">
           <span>{personal.lastSyncedAt ? `↻ Bank synced ${relativeTime(personal.lastSyncedAt)}` : '↻ No bank synced yet'}</span>
@@ -214,7 +214,11 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
         </div>
       </section>
       <section className="cb-review-card cb-transaction-preview" aria-label="Recent transactions">
-        <div className="cb-review-head"><div><h2>Recent transactions</h2><small>{new Date(`${activeMonth}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</small></div></div>
+        <div className="cb-review-head"><div><h2>Recent transactions</h2><small>{new Date(`${activeMonth}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</small></div>
+          {unreviewed.length > 0 && <span className="cb-review-attention" role="status" aria-label={`${unreviewed.length} ${unreviewed.length === 1 ? 'transaction needs' : 'transactions need'} categorization across all months`}><b aria-hidden="true">!</b>{unreviewed.length}</span>}
+        </div>
+        {unreviewed.length > 0 && <p className="cb-preview-status">Needs category in transaction review · {unreviewed.length} across all months</p>}
+        {reviews.error && <p className="cb-preview-status cb-preview-error" role="alert">Unable to check transactions needing categorization. Pull down to retry.</p>}
         {transactionsLoading && <p className="cb-preview-status" role="status">Loading transactions…</p>}
         {!transactionsLoading && transactionsError && <p className="cb-preview-status cb-preview-error" role="alert">{transactionsError}</p>}
         {!transactionsLoading && !transactionsError && monthTransactions.length === 0 && <p className="cb-preview-status">No transactions for this month yet.</p>}
@@ -224,14 +228,7 @@ export default function CategoryBudgets({ onOpenSimulator, onOpenTransactions = 
         </div>)}
         <button type="button" className="cb-review-all" onClick={() => onOpenTransactions(activeMonth)}>View all transactions ›</button>
       </section>
-      {!historical && unreviewed.length > 0 && <section className="cb-review-card" aria-label="Transactions to categorize">
-        <div className="cb-review-head"><div><h2>Transactions to categorize</h2><small>{unreviewed.length} {unreviewed.length === 1 ? 'transaction could' : 'transactions could'} not be categorized automatically</small></div><span>{unreviewed.length}</span></div>
-        {unreviewed.slice(0, 3).map(transaction => <div className="cb-review-row" key={transaction.id}>
-          <span><strong>{transaction.merchant}</strong><small>{transaction.category ? transaction.category.charAt(0).toUpperCase() + transaction.category.slice(1) : 'Uncategorized'} · {new Date(`${transaction.date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</small></span>
-          <b className={transaction.amountCents < 0 ? 'income' : ''}>{formatCents(transaction.amountCents)}</b>
-        </div>)}
-        <button type="button" className="cb-review-all" onClick={() => onOpenTransactions(activeMonth)}>Categorize transactions ›</button>
-      </section>}
+
       {!personal.hasBankConnection && <p className="cb-notice" role="status">Group expense shares appear here automatically. Connect a bank account in Profile to include other spending.</p>}
       {overLimit.length > 0 && <p className="cb-notice cb-warn" role="status">Over budget for this month: {overLimit.map(item => item.label).join(', ')}.</p>}
 

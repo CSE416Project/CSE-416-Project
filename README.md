@@ -2,7 +2,7 @@
 
 **Team:** Eva · Vivian · Nicole · Sidhya  
 **Course:** CSE 416 · Software Engineering  
-**Implementation status:** November 11, 2026 · Milestone 5 integration and release preparation
+**Implementation status:** November 14, 2026 · Milestone 5 integration and release preparation
 
 ## Project Overview
 
@@ -14,12 +14,15 @@ The app records that payments were sent and received, but it does not move money
 
 ## Latest updates and database migration status
 
-The latest merged changes include:
+The latest changes include:
+
+- A single Recent transactions card on Personal Budget, with an attention icon/count when categorization is needed. Transaction review has visible All, Needs category, and Excluded tabs. Needs category shows outstanding items across all months, supports search, and clears its badge as items are saved; All and Excluded retain the selected month.
+- Pull-to-refresh reloads the current screen’s data in place, including transaction review, budgets, banking, and groups.
+- iPhone budget CSV export uses the native share sheet; browser CSV downloads remain supported.
 
 - Native Google sign-in for iOS, configured for `com.cse416.divvy`, with the existing backend session checks. This requires a new TestFlight binary and physical-device verification.
 - Eva’s mobile safe-area, status-bar, and layout fixes, plus stable group avatar placeholders across list, detail, customization, and settings screens.
 - Removed generated presentation artifacts from source control.
-
 - Month-specific personal budget limits: editing the current month no longer changes saved limits for previous months. A month without saved limits uses the most recent earlier limits; history before the monthly-limit migration cannot be reconstructed.
 - Bank reconnection deduplication, monthly transaction browsing, and clearer linked-transaction cards showing the original bank charge and personal share.
 - Expense-to-bank linking when the expense date is omitted; the server defaults the date to today.
