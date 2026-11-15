@@ -44,7 +44,6 @@ export default function ExpensePayments({ split, members, groupName, currentUser
           {state.status === 'Payment issue' && <div className="payment-actions"><button type="button" className="primary-button" disabled={busy} onClick={() => onAction(share.memberId, 'received')}>Now received</button></div>}
         </section>;
       })}
-      <p className="payment-footnote">Only confirm money you have received. Your own share needs no reimbursement.</p>
     </> : <>
       <section className="details-card payment-card payment-own" aria-label="Your payment">
         <h2 className={own.status === 'Payment issue' ? 'issue' : 'payment-accent'}>{own.status}</h2>
@@ -60,6 +59,5 @@ export default function ExpensePayments({ split, members, groupName, currentUser
       </section>
       <section className="details-card payment-card" aria-label="Your share"><div className="details-row"><span>Expense total</span><span>{formatCents(split.totalCents)}</span></div><div className="details-row"><span>Your share · {split.mode === 'equal' ? 'Equal split' : 'Split by item'}</span><span>{formatCents(own.share)}</span></div><p>Includes tax, tip and fees</p></section>
     </>}
-    <p className="payment-footnote">No money moves through the app. {split.expenseId ? 'Payment records are saved to your group.' : 'Payment records are saved for this preview session only.'}</p>
   </>;
 }

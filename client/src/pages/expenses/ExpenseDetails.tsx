@@ -24,7 +24,6 @@ export default function ExpenseDetails({ expense, groupName, members, onBack, on
   const emphasizeBudget = highlightBudget && !budgetSetupSaved;
   const [budgetOpen, setBudgetOpen] = useState(initialBudgetOpen);
   const [receiptOpen, setReceiptOpen] = useState(false);
-  const [selectedContributor, setSelectedContributor] = useState<{ itemId: number; memberId: string } | null>(null);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -75,7 +74,6 @@ export default function ExpenseDetails({ expense, groupName, members, onBack, on
       </section>
       <section className="details-card" aria-label="Items and fees">
         <h2>Items &amp; fees</h2>
-        {split && <p className="details-avatar-hint">Tap an avatar to view their share</p>}
         {split ? <>
           {split.items.map(item => {
             const contributors = split.recurring ? [] : split.shares.filter(share => split.mode === 'equal' || split.assignments[item.id]?.includes(share.memberId));
@@ -83,16 +81,10 @@ export default function ExpenseDetails({ expense, groupName, members, onBack, on
               <div className="details-row"><strong>{item.name}{(item.quantity ?? 1) > 1 && ` × ${item.quantity}`}</strong><strong>{formatCents(item.cents)}</strong></div>
               <div className="details-item-sharing"><p>{split.recurring ? 'Cycle allocation · See shares below' : split.mode === 'equal' ? 'Shared equally by everyone' : `Shared by ${contributors.length}`}</p>
               <div className="details-contributors">{contributors.map(share => {
-                const active = selectedContributor?.itemId === item.id && selectedContributor.memberId === share.memberId;
                 const memberIndex = members.findIndex(person => person.id === share.memberId);
                 const colorIndex = memberIndex >= 0 ? memberIndex : split.shares.findIndex(person => person.memberId === share.memberId);
-                return <button type="button" key={share.memberId} aria-label={`View ${name(share.memberId)}’s share of ${item.name}`} aria-pressed={active} onClick={() => setSelectedContributor(active ? null : { itemId: item.id, memberId: share.memberId })}><span className={`split-avatar details-contributor-avatar tone-${colorIndex % 4}`} aria-hidden="true"><Avatar name={name(share.memberId)} /></span></button>;
+                return <span key={share.memberId} title={name(share.memberId)} className={`split-avatar details-contributor-avatar tone-${colorIndex % 4}`}><Avatar name={name(share.memberId)} /></span>;
               })}</div></div>
-              {contributors.filter(share => selectedContributor?.itemId === item.id && selectedContributor.memberId === share.memberId).map(share => {
-                const index = contributors.indexOf(share);
-                const amount = Math.floor(item.cents / contributors.length) + (index < item.cents % contributors.length ? 1 : 0);
-                return <div className="details-contributor-info" role="status" key={share.memberId}><span>{name(share.memberId)}{share.memberId === split.payerId ? ' · Payer' : ''}</span><strong>{split.mode === 'items' ? `${formatCents(amount)} before fees` : 'Equal share · See totals below'}</strong></div>;
-              })}
               {!contributors.length && !split.recurring && <p>No participants assigned.</p>}
             </section>;
           })}

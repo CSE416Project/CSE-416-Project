@@ -15,38 +15,16 @@ const FILTERS: { key: Filter; label: string }[] = [
 ];
 const labelFor = (key: BankReviewCategory | null) => key === 'income' ? 'Income' : CATEGORIES.find(item => item.key === key)?.label ?? 'Not categorized';
 const message = (error: unknown) => error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'Unable to load transactions.';
-const dollars = (cents: number) => (cents / 100).toFixed(2);
-const cents = (value: string) => {
-  if (!/^\d+(?:\.\d{0,2})?$/.test(value.trim())) return null;
-  const result = Math.round(Number(value) * 100);
-  return Number.isSafeInteger(result) && result > 0 ? result : null;
-};
-
 function ReviewEditor({ transaction, onCancel, onSaved }: { transaction: ApiBankTransaction; onCancel: () => void; onSaved: (transaction: ApiBankTransaction) => void }) {
   const [category, setCategory] = useState<BankBudgetCategory>(CATEGORIES.some(item => item.key === transaction.category) ? transaction.category as BankBudgetCategory : 'other');
-  const [income, setIncome] = useState(transaction.category === 'income');
-  const [excluded, setExcluded] = useState(transaction.excluded);
-  const [note, setNote] = useState(transaction.note ?? '');
-  const [split, setSplit] = useState(transaction.splits.length > 0);
-  const [parts, setParts] = useState(() => transaction.splits.length
-    ? transaction.splits.map(item => ({ category: item.category, amount: dollars(item.amountCents) }))
-    : [{ category: 'dining' as BankBudgetCategory, amount: '' }, { category: 'other' as BankBudgetCategory, amount: '' }]);
+  const incoming = transaction.amountCents <= 0;
+  const [excluded, setExcluded] = useState(incoming || transaction.excluded);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const parsed = parts.map(part => ({ category: part.category, amountCents: cents(part.amount) }));
-  const splitTotal = parsed.reduce((sum, part) => sum + (part.amountCents ?? 0), 0);
-  const duplicateCategory = new Set(parts.map(part => part.category)).size !== parts.length;
-  const validSplit = !split || (transaction.amountCents > 0 && parsed.every(part => part.amountCents !== null) && splitTotal === transaction.amountCents && !duplicateCategory);
-  const save = async (reviewed: boolean) => {
-    if (saving || !validSplit) return;
+  const save = async () => {
+    if (saving) return;
     setSaving(true); setError('');
-    const review: TransactionReview = {
-      category: transaction.amountCents <= 0 ? (income ? 'income' : null) : split ? null : category,
-      excluded,
-      note: note.trim() || null,
-      reviewed,
-      splits: split ? parsed.map(part => ({ category: part.category, amountCents: part.amountCents! })) : [],
-    };
+    const review: TransactionReview = { category: incoming ? null : category, excluded, note: transaction.note, reviewed: true, splits: [] };
     try { onSaved((await bankingApi.reviewTransaction(transaction.id, review)).transaction); }
     catch (failure) { setError(message(failure)); setSaving(false); }
   };
@@ -55,35 +33,15 @@ function ReviewEditor({ transaction, onCancel, onSaved }: { transaction: ApiBank
       <header><div><h2 id="review-transaction-title">Review transaction</h2><p>{transaction.merchant} · {formatCents(transaction.amountCents)}</p></div>
         <button type="button" aria-label="Close" disabled={saving} onClick={onCancel}>×</button></header>
       {transaction.linkedExpense && <p className="bank-linked-notice">Linked to “{transaction.linkedExpense.title}” in {transaction.linkedExpense.groupName}. Your personal budget counts <strong>{formatCents(transaction.linkedExpense.personalBudgetCents ?? 0)}</strong> instead of the original {formatCents(transaction.amountCents)} bank charge.</p>}
-      <label className="review-check"><input type="checkbox" checked={excluded} disabled={saving || !!transaction.linkedExpense} onChange={event => { setExcluded(event.target.checked); if (event.target.checked) setSplit(false); }} />
-        <span><strong>Exclude from budget</strong><small>Use for transfers, reimbursements, and duplicate charges.</small></span></label>
-      <label>CATEGORY<select value={category} disabled={saving || split || excluded || transaction.amountCents <= 0 || !!transaction.linkedExpense} onChange={event => setCategory(event.target.value as BankBudgetCategory)}>
+      <label className="review-check"><input type="checkbox" checked={excluded} disabled={saving || incoming || !!transaction.linkedExpense} onChange={event => setExcluded(event.target.checked)} />
+        <span><strong>Exclude from budget</strong></span></label>
+      {!incoming && <label>CATEGORY<select value={category} disabled={saving || excluded} onChange={event => setCategory(event.target.value as BankBudgetCategory)}>
         {CATEGORIES.map(item => <option value={item.key} key={item.key}>{item.label}</option>)}
-      </select></label>
-      {transaction.amountCents <= 0 && <><label className="review-check"><input type="checkbox" checked={income} disabled={saving || excluded} onChange={event => setIncome(event.target.checked)} />
-        <span><strong>Count as income</strong><small>Turn this on for paychecks and other earned income. Leave refunds and transfers off.</small></span></label>
-        <p className="bank-caption">Deposits and refunds never count as spending. Only deposits marked as income appear in the income chart.</p></>}
-      {transaction.amountCents > 0 && !transaction.linkedExpense && <label className="review-check"><input type="checkbox" checked={split} disabled={saving || excluded} onChange={event => setSplit(event.target.checked)} />
-        <span><strong>Split across categories</strong><small>Every part must add up to {formatCents(transaction.amountCents)}.</small></span></label>}
-      {split && !excluded && <div className="review-splits">
-        {parts.map((part, index) => <div className="review-split-row" key={index}>
-          <select aria-label={`Split ${index + 1} category`} value={part.category} disabled={saving} onChange={event => setParts(parts.map((item, i) => i === index ? { ...item, category: event.target.value as BankBudgetCategory } : item))}>
-            {CATEGORIES.map(item => <option value={item.key} key={item.key}>{item.label}</option>)}
-          </select>
-          <span>$</span><input aria-label={`Split ${index + 1} amount`} inputMode="decimal" placeholder="0.00" value={part.amount} disabled={saving} onChange={event => setParts(parts.map((item, i) => i === index ? { ...item, amount: event.target.value } : item))} />
-          {parts.length > 2 && <button type="button" aria-label={`Remove split ${index + 1}`} disabled={saving} onClick={() => setParts(parts.filter((_, i) => i !== index))}>−</button>}
-        </div>)}
-        {parts.length < CATEGORIES.length && <button className="review-add-split" type="button" disabled={saving} onClick={() => {
-          const unused = CATEGORIES.find(item => !parts.some(part => part.category === item.key))?.key ?? 'other';
-          setParts([...parts, { category: unused, amount: '' }]);
-        }}>+ Add category</button>}
-        <p className={validSplit ? 'review-total valid' : 'review-total'}>{formatCents(splitTotal)} of {formatCents(transaction.amountCents)} allocated{duplicateCategory ? ' · choose each category once' : ''}</p>
-      </div>}
-      <label>NOTE<textarea maxLength={500} value={note} disabled={saving} placeholder="Optional note" onChange={event => setNote(event.target.value)} /></label>
+      </select></label>}
       {error && <p className="form-notice" role="alert">{error}</p>}
       <div className="review-dialog-actions">
         <button type="button" disabled={saving} onClick={onCancel}>Cancel</button>
-        <button type="button" disabled={saving || !validSplit} onClick={() => void save(true)}>{saving ? 'Saving…' : 'Save changes'}</button>
+        <button type="button" disabled={saving} onClick={() => void save()}>{saving ? 'Saving…' : 'Save changes'}</button>
       </div>
     </div>
   </div>;
@@ -154,6 +112,7 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
       onUnreviewedDelta?.(delta);
     }
     setSelected(null);
+    window.dispatchEvent(new Event('cse416:settlements'));
     const belongs = filter === 'all' || filter === 'excluded' && transaction.excluded
       || filter === 'unreviewed' && !transaction.reviewed && !transaction.excluded;
     setTransactions(previous => belongs ? previous.map(item => item.id === transaction.id ? transaction : item) : previous.filter(item => item.id !== transaction.id));
@@ -163,7 +122,7 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
     <header className="bank-header"><button type="button" aria-label="Back" onClick={onBack}><BackArrow /></button>
       <div><h1>Transactions</h1><p>{filter === 'unreviewed' ? 'Needs category · All months' : monthOptions.find(item => item.value === month)?.label ?? month}</p></div></header>
     <div className="review-toolbar">
-      <input className="review-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search merchant, account, or note" aria-label="Search transactions" />
+      <input className="review-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search merchant or account" aria-label="Search transactions" />
       <div className="review-filter-menu" ref={filterMenuRef}>
         <button type="button" className={filtersOpen || filter !== 'all' ? 'review-filter-toggle active' : 'review-filter-toggle'} aria-label="Filter transactions" aria-expanded={filtersOpen} aria-haspopup="dialog" onClick={() => setFiltersOpen(open => !open)}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
@@ -195,8 +154,8 @@ export default function TransactionReviewCenter({ onBack, onUnreviewedDelta, ini
       {transactions.map(transaction => <button type="button" className={transaction.linkedExpense ? 'review-card linked-group-expense' : 'review-card'} key={transaction.id} aria-disabled={transaction.source === 'group_payment'} onClick={() => { if (transaction.source !== 'group_payment') setSelected(transaction); }}>
         <span className="review-card-main"><strong>{transaction.merchant}</strong><small>{transaction.institution} · {transaction.accountName} · {new Date(`${transaction.date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</small>
           {transaction.linkedExpense && <small className="review-linked-context">Linked to {transaction.linkedExpense.title} · {transaction.linkedExpense.groupName}</small>}
-          <span className="review-badges">{transaction.pending && <em>Pending</em>}{transaction.linkedExpense && <em className="linked">Group expense</em>}{transaction.groupPayment && <em>{transaction.groupPayment.method} · {transaction.groupPayment.groupName}</em>}{transaction.excluded ? <em>Excluded</em> : transaction.splits.length ? <em>{transaction.splits.length} category split</em> : <em>{labelFor(transaction.category)}</em>}{transaction.needsReview && <em>Needs category</em>}</span>
-          {transaction.note && <small className="review-note">{transaction.note}</small>}</span>
+          <span className="review-badges">{transaction.pending && <em>Pending</em>}{transaction.linkedExpense && <em className="linked">Group expense</em>}{transaction.groupPayment && <em>{transaction.groupPayment.method} · {transaction.groupPayment.groupName}</em>}{transaction.excluded ? <em>Excluded</em> : transaction.splits.length ? <em>{transaction.splits.length} category split</em> : <em>{labelFor(transaction.category)}</em>}{transaction.needsReview && <em className="needs-category">Needs category</em>}</span>
+          </span>
         {transaction.linkedExpense ? <span className="review-linked-amounts">
           <span className="review-budget-amount"><strong>{formatCents(transaction.linkedExpense.personalBudgetCents ?? 0)}</strong><small>Personal budget</small></span>
           <span className="review-original-amount"><strong>{formatCents(transaction.amountCents)}</strong><small>Original charge</small></span>

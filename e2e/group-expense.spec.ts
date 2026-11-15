@@ -32,6 +32,19 @@ test('an expense persists across reload, edits in place, and updates the group o
   await page.getByRole('textbox', { name: 'EXPENSE NAME' }).fill('Shared supplies');
   await page.getByRole('textbox', { name: 'Item 1 name' }).fill('Materials');
   await page.getByRole('textbox', { name: 'Item 1 amount' }).fill('30.00');
+  // The expense controls must fit narrow phones rather than requiring horizontal scrolling.
+  for (const width of [320, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    const overflow = await page.locator('.expense-body').evaluate(body => {
+      const bounds = body.getBoundingClientRect();
+      const controls = [...body.querySelectorAll<HTMLElement>('input:not([type=file]),textarea,select,button')].filter(node => node.getClientRects().length);
+      return body.scrollWidth > body.clientWidth + 1 || controls.some(node => {
+        const rect = node.getBoundingClientRect();
+        return rect.left < bounds.left - 1 || rect.right > bounds.right + 1;
+      });
+    });
+    expect(overflow, `expense controls should fit at ${width}px`).toBe(false);
+  }
   await page.getByRole('button', { name: 'Continue to split' }).click();
   await page.getByRole('button', { name: 'Confirm and split $30.00' }).click();
   await page.getByRole('button', { name: 'Back to group' }).last().click();

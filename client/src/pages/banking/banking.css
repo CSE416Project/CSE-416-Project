@@ -99,3 +99,9 @@
 .bank-menu-toggle{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;color:var(--muted);font-size:var(--icon-size)}
 
 .review-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}.review-tabs>button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 12px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);font:inherit;font-size:12px;font-weight:600}.review-tabs>button.active{border-color:var(--accent);background:var(--soft-green);color:var(--accent)}.review-tab-attention{display:inline-flex;align-items:center;gap:4px;min-width:22px;padding:3px 6px;border-radius:999px;background:var(--danger-soft);color:var(--danger);font-size:11px}.review-tabs>button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.review-badges em.needs-category,.review-tab-attention{background:#b53e30;color:#fff;font-weight:700}
+.banking-workspace,.transaction-review-dialog{min-width:0;max-width:100%}.review-card,.review-toolbar,.transaction-review-dialog>*{min-width:0;max-width:100%}
+.transaction-review-dialog header>div{min-width:0}.transaction-review-dialog header p,.bank-linked-notice{overflow-wrap:anywhere}.transaction-review-dialog header>button{flex:none}
+.review-dialog-actions button{flex:1;min-width:0;padding-inline:8px}.transaction-review-dialog select{min-width:0;max-width:100%}
+@media(max-width:359px){.review-card{flex-wrap:wrap}.review-linked-amounts{flex-basis:100%;align-items:flex-start;flex-direction:row;justify-content:space-between;text-align:left}}

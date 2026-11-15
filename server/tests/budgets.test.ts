@@ -438,3 +438,26 @@ it('inherits limits across months while current edits and zero limits preserve h
   const next = await personalBudget(memberId, day(1, 1));
   expect(byKey(next.categories)).toMatchObject({ transit: { plannedCents: 250000 }, shopping: { plannedCents: 0 } });
 });
+
+
+it('recategorizes a linked bank charge and only its owner’s share consistently in both directions', async () => {
+  const created = await owner.post(`/api/groups/${groupId}/expenses`).send({ clientRequestId: randomUUID(), expense: {
+    title: 'Category sync test', budgetCategory: 'dining', expenseDate: todayIso, paidByUserId: ownerId, splitMode: 'EQUAL', participantIds: [ownerId, memberId],
+    items: [{ name: 'Lunch', unitPriceCents: 2400, quantity: 1 }], taxCents: 0, tipCents: 0, otherCents: 0 } }).expect(201);
+  const id = created.body.expense.id;
+  const account = await prisma.bankAccount.findFirstOrThrow({ where: { connection: { userId: ownerId }, hidden: false } });
+  const bank = await prisma.bankTransaction.create({ data: { accountId: account.id, plaidTransactionId: `linked-category-${run}`, amountCents: 2400, date: new Date(todayIso), name: 'Lunch', category: 'FOOD_AND_DRINK' } });
+  await owner.put(`/api/expenses/${id}/budget-link`).send({ transactionId: bank.id }).expect(204);
+  const before = byKey((await owner.get('/api/budgets/personal')).body.categories);
+  const result = await owner.put(`/api/banking/transactions/${bank.id}/review`).send({ category: 'shopping', reviewed: true, excluded: false }).expect(200);
+  expect(result.body.transaction.category).toBe('shopping');
+  expect((await owner.get(`/api/expenses/${id}/budget-link`)).body.category).toBe('shopping');
+  expect((await member.get(`/api/expenses/${id}/budget-link`)).body.category).toBe('dining');
+  const after = byKey((await owner.get('/api/budgets/personal')).body.categories);
+  expect(after.dining.spentCents).toBe(before.dining.spentCents - 1200);
+  expect(after.shopping.spentCents).toBe(before.shopping.spentCents + 1200);
+  await owner.put(`/api/expenses/${id}/budget-category`).send({ category: 'transit' }).expect(204);
+  const listed = (await owner.get('/api/banking/transactions').query({ status: 'all' })).body.transactions;
+  expect(listed).toContainEqual(expect.objectContaining({ id: bank.id, category: 'transit' }));
+  await member.put(`/api/banking/transactions/${bank.id}/review`).send({ category: 'groceries' }).expect(404);
+});

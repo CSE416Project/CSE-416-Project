@@ -180,3 +180,14 @@
 .expense-bank-suggestion .expense-bank-copy>.expense-bank-date{font-size:11px}
 .expense-bank-suggestion .expense-bank-copy>.expense-bank-reasons{margin-top:3px;font-size:11px;color:var(--accent)}
 .expense-bank-suggestion>strong{font-size:14px;align-self:center}
+
+/* Flexible tracks keep the full expense form inside narrow iPhone viewports. */
+.expense-screen,.expense-body,.expense-items,.expense-item-entry,.expense-fees{min-width:0;max-width:100%}
+.expense-body{overflow-x:hidden}.expense-body>*{min-width:0;max-width:100%}
+.expense-entry-screen .expense-item,.expense-item-entry.has-validation-error .expense-item{grid-template-columns:minmax(0,1fr) minmax(0,104px) minmax(0,auto);gap:6px}
+.expense-item>*{min-width:0}.expense-money input{min-width:0;max-width:100%;width:100%}
+.expense-fees>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.expense-fees .expense-money{min-width:0;width:100%;padding-inline:8px}
+.expense-body input[type=date],.expense-body select{min-width:0;max-width:100%;width:100%;box-sizing:border-box}
+@media(max-width:359px){.expense-entry-screen .expense-item,.expense-item-entry.has-validation-error .expense-item{grid-template-columns:minmax(0,1fr) 104px}.expense-item-remove{grid-column:1/-1;justify-self:end}.expense-receipt-actions{flex-wrap:wrap}}
+
+.expense-body input[type=date]{appearance:none;min-inline-size:0}.expense-header h1,.expense-section-title{overflow-wrap:anywhere;min-width:0}.details-contributors{flex-wrap:wrap;max-width:100%}.details-row{min-width:0;gap:10px}.details-row>span,.details-row>strong{min-width:0;overflow-wrap:anywhere}

@@ -390,8 +390,10 @@ model BankTransaction {
   reviewedAt            DateTime?
   needsReview           Boolean                        @default(false)
   autoExcludedReason    String?
+  classificationVersion Int                           @default(0)
 
   @@index([accountId, date])
+  @@index([accountId, classificationVersion])
 }
 
 // One sender-side record for a repayment reported through a group settlement. When a matching

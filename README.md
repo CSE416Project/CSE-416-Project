@@ -16,6 +16,10 @@ The app records that payments were sent and received, but it does not move money
 
 The latest changes include:
 
+- Simplified transaction review to category and exclusion controls. Linked expense transactions can change the owner’s personal share category in either direction without altering other participants. Notes, multi-category splitting, and manual income selection are removed from the form.
+- Automatic merchant rules cover common groceries, restaurants, shopping, and transit when provider categories are missing. Unknown purchases count under Other and display a red Needs category badge until reviewed. Existing imports are upgraded once while preserving manual categories and existing saved splits. Deposits/refunds are automatically excluded from normal transaction lists and spending; they remain visible in Excluded. Provider-identified income still contributes to the income chart automatically.
+- Narrow-screen expense forms use flexible layouts; expense detail avatars are informational, and redundant payment footer text is removed.
+
 - Spending breakdown is consolidated into Category plan, replacing the separate View insights page. Each category shows spending and its share of the selected month; bars show spending share without a limit, or limit usage when a limit is set, with explicit over-limit amounts. Category transaction drill-downs and editing limits remain available.
 
 - A single Recent transactions card on Personal Budget, with an attention icon/count when categorization is needed. Transaction review has visible All, Needs category, and Excluded tabs. Needs category shows outstanding items across all months, supports search, and clears its badge as items are saved; All and Excluded retain the selected month.
@@ -172,8 +176,8 @@ The application does not initiate ACH, card, Venmo, Cash App, or other real-mone
 - Automatically synchronize every active Plaid connection after a successful password or Google login, while keeping login available if Plaid is temporarily unavailable.
 - View imported bank activity in the private, searchable Transactions screen. Transactions that can be categorized automatically require no action; only purchases without a reliable category appear in the Home to-do and the Personal Budget review count.
 - Automatically hide credit-card payoff transactions from the transaction list and spending totals so the original purchases are not counted a second time.
-- Categorize unresolved purchases, override categories, exclude non-spending charges, add notes, and split one purchase across categories.
-- Split one spending transaction across multiple budget categories, with server validation that the allocations equal the charge to the cent.
+- Categorize unresolved purchases, override categories, and exclude non-spending charges from a focused transaction review form.
+- Preserve historical category splits and notes for compatibility; new review controls assign one category and no longer offer notes, splitting, or manual income selection.
 - Automatically link a payer's split when there is one unambiguous exact-amount charge near the expense date. If the result is ambiguous, suggest up to five posted charges ranked by amount, date proximity, and merchant similarity for the payer to search and select privately.
 - Search all eligible posted charges by merchant, date, or amount when selecting or changing a group-expense link; exact receipt-total matches appear first.
 - Let the payer add, change, or remove the bank link after saving the expense.
@@ -367,7 +371,7 @@ The web client and Express API now run together on Vercel, using the existing Pr
 | PostgreSQL | Prisma Postgres Free | Server-only TLS connection; existing database retained |
 | iPhone beta | Capacitor / TestFlight | Loads the same HTTPS application; native Google SDK and Capacitor configuration changes require a new uploaded binary |
 
-The function exports the Express app without starting the standalone listener or background timers. Production builds apply versioned migrations, including temporary receipt-upload tables. The current release contains 27 migration directories, including month-specific group plans; deploy checks pending migrations without resetting existing data. Preview builds do not migrate databases. The former Render service configuration remains available for rollback; do not run both services' background schedules concurrently.
+The function exports the Express app without starting the standalone listener or background timers. Production builds apply versioned migrations, including temporary receipt-upload tables. The current release contains 28 migration directories, including month-specific group plans; deploy checks pending migrations without resetting existing data. Preview builds do not migrate databases. The former Render service configuration remains available for rollback; do not run both services' background schedules concurrently.
 
 Production verification passed for account registration/login, session persistence, group creation/listing/deletion, receipt conversion/storage/download, production Plaid Link-token creation, and Azure parsing of a synthetic receipt. Disposable test records were removed. Google sign-in challenge creation was verified; a full Google account sign-in and a real bank connection still require an interactive user test.
 

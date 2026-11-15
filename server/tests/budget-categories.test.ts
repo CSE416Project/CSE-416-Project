@@ -14,10 +14,10 @@ describe('categorize', () => {
   it('puts grocery merchants in groceries, by merchant or transaction name', () => {
     expect(categorize(tx('FOOD_AND_DRINK', 'TRADER JOE S #123', "Trader Joe's"))).toBe('groceries');
     expect(categorize(tx('FOOD_AND_DRINK', 'WHOLE FOODS MKT'))).toBe('groceries');
-    expect(categorize(tx('GENERAL_MERCHANDISE', 'Whole Foods'))).toBe('shopping');
+    expect(categorize(tx('GENERAL_MERCHANDISE', 'Whole Foods'))).toBe('groceries');
   });
   it('leaves unknown spending for the user to categorize', () => {
-    expect(categorize(tx(null))).toBeNull();
+    expect(categorize(tx(null))).toBe('other');
     expect(requiresCategoryReview({ ...tx(null), amountCents: 1200 })).toBe(true);
     expect(requiresCategoryReview({ ...tx('FOOD_AND_DRINK'), amountCents: 1200 })).toBe(false);
     expect(requiresCategoryReview({ ...tx('TRANSFER_OUT'), amountCents: 1200 })).toBe(false);
@@ -54,4 +54,21 @@ describe('recentMonths', () => {
     expect(keys).toEqual(['2026-11', '2026-12', '2027-01', '2027-02']);
     expect(start.toISOString()).toBe('2026-11-01T00:00:00.000Z');
   });
+});
+
+
+it('categorizes common merchants without provider categories and flags only unknown fallbacks', () => {
+  for (const [merchant, category] of [["Trader Joe's", 'groceries'], ['WEEE INC.', 'groceries'], ['STONY BROOK TAICHI', 'dining'], ['Uber Eats', 'dining'], ['Amazon.com*T57MZ9293', 'shopping'], ['AMAZON MKTPL*FC4OQ9A3', 'shopping'], ['Uber', 'transit']] as const) {
+    expect(categorize(tx(null, merchant))).toBe(category);
+    expect(requiresCategoryReview({ ...tx(null, merchant), amountCents: 1200 })).toBe(false);
+  }
+  expect(categorize(tx(null, 'Mystery purchase'))).toBe('other');
+  expect(requiresCategoryReview({ ...tx(null, 'Mystery purchase'), amountCents: 1200 })).toBe(true);
+});
+
+it('automatically excludes every deposit and refund, including missing provider metadata', () => {
+  expect(automaticExclusionReason({ ...tx(null, 'Refund'), amountCents: -1200 })).toBe('DEPOSIT_OR_REFUND');
+  expect(automaticExclusionReason({ ...tx('INCOME', 'Payroll'), amountCents: -50000 })).toBe('DEPOSIT_OR_REFUND');
+  expect(automaticExclusionReason({ ...tx(null, 'CAPITAL ONE MOBILE PYMT'), amountCents: 2500 })).toBe('CREDIT_CARD_PAYMENT');
+  expect(requiresCategoryReview({ ...tx(null, 'Refund'), amountCents: -1200 })).toBe(false);
 });

@@ -18,25 +18,24 @@ it('shows only assigned members with exact item amounts and historical names', (
   const tea = within(screen.getByRole('region', { name: 'Contributors for Tea' }));
   expect(tea.getByText('Tea × 2')).toBeInTheDocument();
   expect(tea.queryByRole('status')).not.toBeInTheDocument();
-  fireEvent.click(tea.getByRole('button', { name: 'View You’s share of Tea' }));
-  expect(tea.getByRole('status')).toHaveTextContent('You · Payer');
-  expect(tea.getByRole('status')).toHaveTextContent('$2.51 before fees');
-  const amy = tea.getByRole('button', { name: 'View Amy Saved’s share of Tea' });
-  fireEvent.click(amy);
-  expect(tea.getByRole('status')).toHaveTextContent('Amy Saved');
-  expect(tea.getByRole('status')).toHaveTextContent('$2.50 before fees');
-  fireEvent.click(amy);
-  expect(tea.queryByRole('status')).not.toBeInTheDocument();
+  expect(tea.queryByRole('button')).not.toBeInTheDocument();
+  expect(tea.getByTitle('You')).toBeVisible();
+  expect(tea.getByTitle('Amy Saved')).toBeVisible();
+  expect(screen.queryByText('Tap an avatar to view their share')).not.toBeInTheDocument();
+  expect(screen.getByRole('region', { name: 'Split shares' })).toHaveTextContent('Amy Saved$5.50');
   expect(tea.queryByText('Other')).not.toBeInTheDocument();
   const cake = within(screen.getByRole('region', { name: 'Contributors for Cake' }));
   expect(cake.queryByText('You')).not.toBeInTheDocument();
-  expect(cake.getAllByRole('button')).toHaveLength(1);
+  expect(cake.queryByRole('button')).not.toBeInTheDocument();
+  expect(cake.getByTitle('Amy Saved')).toBeVisible();
 });
 it('shows all saved participants for equal splits without inventing per-item rounded shares', () => {
   show({ ...split, mode: 'equal', assignments: {} });
   const cake = within(screen.getByRole('region', { name: 'Contributors for Cake' }));
   expect(cake.getByText('Shared equally by everyone')).toBeInTheDocument();
-  expect(cake.getAllByRole('button')).toHaveLength(2);
+  expect(cake.queryByRole('button')).not.toBeInTheDocument();
+  expect(cake.getByTitle('You')).toBeVisible();
+  expect(cake.getByTitle('Amy Saved')).toBeVisible();
   expect(cake.queryByText('$1.50')).not.toBeInTheDocument();
 });
 
@@ -60,4 +59,13 @@ it('requires acknowledgment before deleting expenses with payment history', asyn
   fireEvent.click(screen.getByRole('checkbox'));
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Delete permanently' })); });
   expect(onDelete).toHaveBeenCalledWith(true);
+});
+
+
+it('keeps the payments view free of redundant footer instructions', () => {
+  show(split);
+  fireEvent.click(screen.getByRole('button', { name: /^Payments$/ }));
+  expect(screen.queryByText(/Only confirm money you have received/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/No money moves through the app/)).not.toBeInTheDocument();
+  expect(screen.getByRole('region', { name: 'Collection summary' })).toBeVisible();
 });

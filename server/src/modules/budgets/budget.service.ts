@@ -1,3 +1,4 @@
+import { refreshBankClassification } from '../banking/bank.classification.js';
 import { prisma } from '../../config/database.js';
 import { groupBalances } from '../expenses/expense.service.js';
 import { CATEGORY_KEYS, MAX_SAVED_SCENARIOS, NOT_SPENDING, categorize, monthWindow, recentMonths, type CategoryKey } from './budget.categories.js';
@@ -20,10 +21,11 @@ const isIncome = (row: { categoryOverride: string | null; category: string | nul
   row.categoryOverride?.toLowerCase() === 'income' || row.category?.toUpperCase() === 'INCOME';
 
 async function financialActivity(userId: string, keys: string[], start?: Date, end?: Date) {
+  await refreshBankClassification(userId);
   const date = start || end ? { ...(start ? { gte: start } : {}), ...(end ? { lt: end } : {}) } : undefined;
   const [rows, shares, settlementTransactions] = await Promise.all([
     prisma.bankTransaction.findMany({
-      where: { linkedExpense: null, settlementTransaction: null, autoExcludedReason: null, excluded: false,
+      where: { linkedExpense: null, settlementTransaction: null, OR: [{ autoExcludedReason: null, excluded: false }, { autoExcludedReason: 'DEPOSIT_OR_REFUND', category: 'INCOME', amountCents: { lt: 0 } }],
         ...(date ? { date } : {}), account: { hidden: false, connection: { userId } } },
       select: { date: true, amountCents: true, category: true, categoryOverride: true, name: true, merchant: true, reviewSplits: { orderBy: { position: 'asc' } } },
     }),
@@ -60,6 +62,7 @@ async function financialActivity(userId: string, keys: string[], start?: Date, e
 
 /** This month's personal budget: category limits plus spending from the user's visible bank accounts. */
 export async function personalBudget(userId: string, now = new Date()) {
+  await refreshBankClassification(userId);
   const window = monthWindow(now);
   const [limits, rows, connections, shares, settlementTransactions] = await Promise.all([
     prisma.categoryLimit.findMany({ where: { userId, month: { lte: window.month } }, orderBy: { month: 'desc' } }),

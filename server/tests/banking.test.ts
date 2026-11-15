@@ -221,11 +221,30 @@ describe('bank connections', () => {
     ], modified: [], removed: [], next_cursor: 'category-cursor', has_more: false } });
     await owner.post('/api/banking/sync').expect(200);
     const needsCategory = await owner.get('/api/banking/transactions').query({ status: 'unreviewed' }).expect(200);
-    expect(needsCategory.body.transactions).toContainEqual(expect.objectContaining({ merchant: 'Mystery purchase', needsReview: true, reviewed: false }));
+    expect(needsCategory.body.transactions).toContainEqual(expect.objectContaining({ merchant: 'Mystery purchase', category: 'other', needsReview: true, reviewed: false }));
     const all = await owner.get('/api/banking/transactions').query({ status: 'all' }).expect(200);
     expect(all.body.transactions.some((item: { name: string }) => item.name.includes('AUTOPAY'))).toBe(false);
     const hidden = await prisma.bankTransaction.findUniqueOrThrow({ where: { plaidTransactionId: `card-payment-${run}` } });
     expect(hidden).toMatchObject({ excluded: true, autoExcludedReason: 'CREDIT_CARD_PAYMENT', needsReview: false });
+  });
+
+  it('upgrades existing imports once, preserves manual categories, and excludes deposits and refunds', async () => {
+    const account = await prisma.bankAccount.findFirstOrThrow({ where: { connection: { userId: userIds[0] } } });
+    await prisma.bankTransaction.createMany({ data: [
+      { accountId: account.id, plaidTransactionId: `backfill-amazon-${run}`, name: 'AMAZON MKTPL*123', amountCents: 1249, date: new Date('2026-10-01'), needsReview: true },
+      { accountId: account.id, plaidTransactionId: `backfill-manual-${run}`, name: 'Amazon', categoryOverride: 'groceries', amountCents: 1251, date: new Date('2026-10-01') },
+      { accountId: account.id, plaidTransactionId: `backfill-refund-${run}`, name: 'Refund', amountCents: -1249, date: new Date('2026-10-01'), needsReview: true },
+    ] });
+    const all = (await owner.get('/api/banking/transactions').query({ status: 'all' }).expect(200)).body.transactions;
+    expect(all).toContainEqual(expect.objectContaining({ name: 'AMAZON MKTPL*123', category: 'shopping', needsReview: false }));
+    expect(all).toContainEqual(expect.objectContaining({ name: 'Amazon', category: 'groceries', needsReview: false }));
+    expect(all.some((row: { name: string }) => row.name === 'Refund')).toBe(false);
+    const excluded = (await owner.get('/api/banking/transactions').query({ status: 'excluded' }).expect(200)).body.transactions;
+    expect(excluded).toContainEqual(expect.objectContaining({ name: 'Refund', excluded: true, needsReview: false }));
+    const refund = await prisma.bankTransaction.findUniqueOrThrow({ where: { plaidTransactionId: `backfill-refund-${run}` } });
+    expect(refund).toMatchObject({ classificationVersion: 1, autoExcludedReason: 'DEPOSIT_OR_REFUND' });
+    await owner.put(`/api/banking/transactions/${refund.id}/review`).send({ category: null, excluded: false, reviewed: true }).expect(200);
+    expect((await prisma.bankTransaction.findUniqueOrThrow({ where: { id: refund.id } })).excluded).toBe(true);
   });
 
   it('flags a connection that needs re-authentication and restores it afterwards', async () => {

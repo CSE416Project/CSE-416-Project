@@ -1,6 +1,7 @@
 import { CountryCode, Products, type AccountBase, type RemovedTransaction, type Transaction } from 'plaid';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
+import { CLASSIFICATION_VERSION, refreshBankClassification } from './bank.classification.js';
 import { decryptToken, encryptToken } from './bank.crypto.js';
 import { BankingError, plaid, plaidErrorCode } from './plaid.client.js';
 import { CATEGORY_KEYS, automaticExclusionReason, categorize, requiresCategoryReview, type CategoryKey } from '../budgets/budget.categories.js';
@@ -275,7 +276,7 @@ const transactionReviewInclude = {
   account: { include: { connection: { select: { institutionName: true } } } },
   linkedExpense: { select: {
     id: true, title: true, group: { select: { name: true } },
-    shares: { select: { userId: true, totalCents: true } },
+    shares: { select: { userId: true, totalCents: true, budgetCategory: true } },
   } },
   settlementTransaction: { include: {
     group: { select: { id: true, name: true } },
@@ -290,7 +291,7 @@ const presentTransaction = (row: TransactionReviewRow, userId: string) => {
   const personalBudgetCents = row.linkedExpense?.shares.find(share => share.userId === userId)?.totalCents ?? null;
   const category = row.settlementTransaction
     ? (settlementCategories.length === 1 && CATEGORY_KEYS.includes(settlementCategories[0] as CategoryKey) ? settlementCategories[0] as CategoryKey : 'other')
-    : presentedCategory(row);
+    : (row.linkedExpense?.shares.find(share => share.userId === userId)?.budgetCategory as CategoryKey | undefined) ?? presentedCategory(row);
   return ({
   id: row.id,
   source: 'bank' as const,
@@ -318,6 +319,7 @@ const presentTransaction = (row: TransactionReviewRow, userId: string) => {
 };
 
 export async function listTransactions(userId: string, filters: { query?: string; status: TransactionReviewStatus; month?: string }) {
+  await refreshBankClassification(userId);
   const query = filters.query?.trim();
   const monthStart = filters.month ? new Date(`${filters.month}-01T00:00:00.000Z`) : undefined;
   const monthEnd = monthStart ? new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1)) : undefined;
@@ -325,7 +327,7 @@ export async function listTransactions(userId: string, filters: { query?: string
   const rows = await prisma.bankTransaction.findMany({
     where: {
       account: { connection: { userId } },
-      autoExcludedReason: null,
+      ...(filters.status === 'excluded' ? {} : { autoExcludedReason: null }),
       ...(monthRange ? { date: monthRange } : {}),
       ...(filters.status === 'unreviewed' ? { needsReview: true, excluded: false }
         : filters.status === 'reviewed' ? { needsReview: false, excluded: false }
@@ -372,7 +374,7 @@ export async function listTransactions(userId: string, filters: { query?: string
 }
 
 export async function reviewTransaction(userId: string, id: string, patch: TransactionReviewPatch) {
-  const row = await prisma.bankTransaction.findFirst({ where: { id, account: { connection: { userId } } } });
+  const row = await prisma.bankTransaction.findFirst({ where: { id, account: { connection: { userId } } }, include: { linkedExpense: { select: { id: true } } } });
   if (!row) throw new BankingError('Transaction not found', 404);
   if (patch.category === 'income' && row.amountCents >= 0) throw new BankingError('Only deposits can be counted as income', 400);
   if (row.amountCents <= 0 && patch.category && patch.category !== 'income') throw new BankingError('Deposits cannot use a spending category', 400);
@@ -381,16 +383,20 @@ export async function reviewTransaction(userId: string, id: string, patch: Trans
     if (patch.splits.reduce((sum, split) => sum + split.amountCents, 0) !== row.amountCents) throw new BankingError('Split amounts must equal the transaction total', 400);
     if (new Set(patch.splits.map(split => split.category)).size !== patch.splits.length) throw new BankingError('Use each split category only once', 400);
   }
+  if (row.linkedExpense && (patch.excluded || patch.splits.length)) throw new BankingError('Linked expenses use your recorded share; change its category instead', 400);
   await prisma.$transaction(async tx => {
+    if (row.linkedExpense && patch.category && CATEGORY_KEYS.includes(patch.category as CategoryKey)) await tx.expenseShare.updateMany({ where: { expenseId: row.linkedExpense.id, userId }, data: { budgetCategory: patch.category } });
     await tx.bankTransactionSplit.deleteMany({ where: { bankTransactionId: row.id } });
     await tx.bankTransaction.update({
       where: { id: row.id },
       data: {
         categoryOverride: patch.splits.length ? null : patch.category,
-        excluded: patch.excluded,
+        excluded: !!automaticExclusionReason(row) || patch.excluded,
+        autoExcludedReason: automaticExclusionReason(row),
+        classificationVersion: CLASSIFICATION_VERSION,
         reviewNote: patch.note,
         reviewedAt: patch.reviewed ? new Date() : null,
-        needsReview: !patch.reviewed,
+        needsReview: !automaticExclusionReason(row) && !patch.excluded && !patch.reviewed,
         ...(patch.splits.length ? { reviewSplits: { create: patch.splits.map((split, position) => ({ ...split, position })) } } : {}),
       },
     });
@@ -436,18 +442,20 @@ export async function syncConnection(connectionId: string) {
         const accountId = accountIds.get(item.account_id);
         if (!accountId) continue;
         const next = toRow(item);
-        const previous = await tx.bankTransaction.findUnique({ where: { plaidTransactionId: item.transaction_id }, select: { id: true, amountCents: true, reviewedAt: true, autoExcludedReason: true } });
+        const previous = await tx.bankTransaction.findUnique({ where: { plaidTransactionId: item.transaction_id }, select: { id: true, amountCents: true, reviewedAt: true, autoExcludedReason: true, excluded: true, categoryOverride: true, reviewSplits: { select: { id: true } } } });
         // A changed bank total must be reviewed again rather than silently excluded.
         await tx.expense.updateMany({ where: { bankTransaction: { plaidTransactionId: item.transaction_id, amountCents: { not: next.amountCents } } }, data: { bankTransactionId: null } });
         if (previous && previous.amountCents !== next.amountCents) {
           await tx.bankTransactionSplit.deleteMany({ where: { bankTransactionId: previous.id } });
         }
         const autoExcluded = !!next.autoExcludedReason;
+        const manuallyExcluded = !!previous?.excluded && !previous.autoExcludedReason;
+        const needsReview = !autoExcluded && !manuallyExcluded && !previous?.categoryOverride && !(previous?.reviewSplits.length && previous.amountCents === next.amountCents) && next.needsReview;
         await tx.bankTransaction.upsert({
           where: { plaidTransactionId: item.transaction_id },
-          create: { ...next, excluded: autoExcluded, reviewedAt: next.needsReview ? null : new Date(), accountId, plaidTransactionId: item.transaction_id },
+          create: { ...next, classificationVersion: CLASSIFICATION_VERSION, excluded: autoExcluded, reviewedAt: next.needsReview ? null : new Date(), accountId, plaidTransactionId: item.transaction_id },
           update: {
-            ...next, reviewedAt: next.needsReview ? null : previous?.reviewedAt ?? new Date(),
+            ...next, needsReview, classificationVersion: CLASSIFICATION_VERSION, reviewedAt: needsReview ? null : previous?.reviewedAt ?? new Date(),
             ...(autoExcluded ? { excluded: true } : previous?.autoExcludedReason ? { excluded: false } : {}),
           },
         });

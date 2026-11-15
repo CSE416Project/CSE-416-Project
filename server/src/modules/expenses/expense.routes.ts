@@ -1,3 +1,4 @@
+import { CLASSIFICATION_VERSION } from '../banking/bank.classification.js';
 import { Prisma } from '@prisma/client';
 import { categorize } from '../budgets/budget.categories.js';
 import { ExpenseError } from './expense.service.js';
@@ -96,6 +97,7 @@ expensesRouter.put('/expenses/:id/budget-category', async (req, res) => {
     const expense = await readExpense(tx, req.params.id, req.userId!);
     if (!expense.shares.some(s => s.userId === req.userId)) throw new ExpenseError(403, 'Only participants can categorize their share');
     await tx.expenseShare.update({ where: { expenseId_userId: { expenseId: expense.id, userId: req.userId! } }, data: { budgetCategory: category } });
+    if (expense.paidByUserId === req.userId && expense.bankTransactionId) await tx.bankTransaction.update({ where: { id: expense.bankTransactionId }, data: { categoryOverride: category, needsReview: false, reviewedAt: new Date(), classificationVersion: CLASSIFICATION_VERSION } });
   });
   res.status(204).end();
 });
