@@ -47,11 +47,13 @@ test('any member splits only the current period, reports how they paid, and rece
     const collection = ownerPage.getByRole('dialog', { name: 'Collection progress' });
     await expect(collection.getByText('$20.00 · Zelle')).toBeVisible();
     await ownerPage.screenshot({ path: test.info().outputPath('collection-popup.png') });
+    await collection.getByRole('button', { name: 'Casey, Awaiting payment', exact: true }).click();
     await collection.getByRole('button', { name: 'Remind Casey' }).click();
     await expect(collection.getByRole('status')).toContainText('In-app reminder sent to Casey');
+    await collection.getByRole('button', { name: 'Jordan, Needs confirmation', exact: true }).click();
     await collection.getByRole('button', { name: 'Confirm received from Jordan' }).click();
     await expect(collection.getByRole('status')).toContainText('Receipt from Jordan confirmed');
-    await collection.getByRole('button', { name: 'Close', exact: true }).click();
+    await collection.getByRole('button', { name: 'Close payment popup', exact: true }).click();
     await memberPage.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await memberPage.getByRole('button', { name: 'Home', exact: true }).click();
     await memberPage.getByRole('button', { name: /^Notifications/ }).click();
@@ -75,8 +77,13 @@ test('any member splits only the current period, reports how they paid, and rece
     await expect(ownerPage.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '5000');
     await ownerPage.getByRole('button', { name: /Weekend costs · Collect/ }).click();
     await ownerPage.getByRole('dialog').getByRole('button', { name: 'Confirm received from Casey' }).click();
-    await expect(ownerPage.getByRole('dialog').getByText('Received and confirmed', { exact: true })).toHaveCount(2);
-    await ownerPage.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
+    const confirmed = ownerPage.getByRole('dialog').getByRole('region', { name: 'Confirmed', exact: true });
+    await expect(confirmed.getByRole('button')).toHaveCount(2);
+    for (const name of ['Jordan', 'Casey']) {
+      await confirmed.getByRole('button', { name: `${name}, Confirmed`, exact: true }).click();
+      await expect(ownerPage.getByRole('dialog').getByText('Received and confirmed', { exact: true })).toBeVisible();
+    }
+    await ownerPage.getByRole('dialog').getByRole('button', { name: 'Close payment popup', exact: true }).click();
     await expect(ownerPage.getByRole('progressbar')).toHaveCount(0);
     await memberPage.getByRole('button', { name: /Weekend costs.*members/ }).click();
     await memberPage.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
@@ -130,7 +137,7 @@ test('new splits merge into one group card and one payment covers several period
     await expect(recipient.getByRole('button', { name: 'Confirm received from Jordan' })).toHaveCount(1);
     await recipient.getByRole('button', { name: 'Confirm received from Jordan' }).click();
     await expect(recipient.getByRole('status')).toContainText('Receipt from Jordan confirmed');
-    await recipient.getByRole('button', { name: 'Close', exact: true }).click();
+    await recipient.getByRole('button', { name: 'Close payment popup', exact: true }).click();
     await expect(collections.getByRole('button', { name: /Collect/ })).toHaveCount(0);
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await expect(inbox.getByRole('button', { name: /Waiting for Alex/ })).toHaveCount(0);
