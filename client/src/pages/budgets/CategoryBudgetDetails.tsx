@@ -14,8 +14,10 @@ const errorMessage = (error: unknown) => error instanceof ApiError ? error.messa
 export function CategoryTransactions({ item, transactions, period, onBack, highlightId }: { highlightId?: string; item: CategoryBudget; transactions: CategoryTransaction[]; period: BudgetPeriod; onBack: () => void }) {
   const left = item.plannedCents - item.spentCents;
   return <>
-    <Back label="Budget" onBack={onBack} />
-    <header className="cb-header"><h1>{item.label}</h1><p>{period.monthLabel} transactions</p></header>
+    <header className="cb-header cb-edit-header">
+      <button type="button" aria-label="Back to Budget" onClick={onBack}><BackArrow /></button>
+      <div><h1>{item.label}</h1><p>{period.monthLabel} transactions</p></div>
+    </header>
     <section className="cb-category" aria-label={`${item.label} summary`}>
       <div className="cb-category-head"><strong>{formatCents(item.spentCents)} spent</strong><span>of {formatCents(item.plannedCents)}</span></div>
       <div className="cb-category-bar" role="presentation"><div style={{ width: `${categoryPct(item)}%`, background: item.color }} /></div>
@@ -92,8 +94,10 @@ export function EditLimits({ budgets, onSave, onCancel }: { budgets: CategoryBud
     catch (failure) { setError(errorMessage(failure)); setSaving(false); }
   };
   return <>
-    <Back label="Budget" onBack={onCancel} />
-    <header className="cb-header"><h1>Edit limits</h1><p>Set a monthly limit for each category. Use $0 for no limit.</p></header>
+    <header className="cb-header cb-edit-header">
+      <button type="button" aria-label="Back to Budget" onClick={onCancel}><BackArrow /></button>
+      <div><h1>Edit limits</h1><p>Set a monthly limit for each category. Use $0 for no limit.</p></div>
+    </header>
     <form onSubmit={event => { event.preventDefault(); void submit(); }}>
       {parsed.map(({ b, cents }) => <label key={b.key} className="cb-category cb-limit-row">
         <span className="cb-category-head"><strong>{b.label}</strong><span>{formatCents(b.spentCents)} spent</span></span>
