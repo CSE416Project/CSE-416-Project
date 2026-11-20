@@ -272,7 +272,7 @@ describe('group budgets from the API', () => {
     expect(screen.getByText('$20.00')).toBeInTheDocument();
     expect(screen.getByText('$18.20')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Mark/ })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Weekend Trip/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Budget' }));
     expect(screen.getByText('Shared expenses')).toBeInTheDocument();
   });
   it('lets an owner or admin edit the shared plan', async () => {
