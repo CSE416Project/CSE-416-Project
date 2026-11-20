@@ -46,8 +46,10 @@ export function WhoOwesWhat({ group, onBack }: { group: GroupBudget; onBack: () 
   const owed = totalOwedCents(group);
   const color = (id: string) => group.members.find(m => m.id === id)?.avatarColor ?? 'green';
   return <>
-    <Back label={group.name} onBack={onBack} />
-    <header className="cb-header"><h1>Who owes what</h1><p>{group.name}</p></header>
+    <header className="cb-header cb-edit-header">
+      <button type="button" aria-label="Back to Budget" onClick={onBack}><BackArrow /></button>
+      <div><h1>Who owes what</h1><p>{group.name}</p></div>
+    </header>
     <section className="cb-hero" aria-label="Settlement summary">
       <strong className="cb-hero-amount">{owed ? `${formatCents(owed)} left to settle` : 'All settled up'}</strong>
       <p className="cb-hero-sub">Current balances across {group.members.length} members</p>
@@ -67,7 +69,7 @@ export function WhoOwesWhat({ group, onBack }: { group: GroupBudget; onBack: () 
         <span className={m.oweCents ? 'cb-owe' : ''}>{m.oweCents ? `Owes ${formatCents(m.oweCents)}` : m.creditCents ? `Owed ${formatCents(m.creditCents)}` : 'Settled'}</span>
       </div>
     </div>)}
-    <p className="cb-notice">Balances come from the group's expenses and confirmed payments. To settle up, report and confirm payments from the group's expenses; no money moves through the app.</p>
+    <p className="cb-notice">Settle up in the Groups tab.</p>
   </>;
 }
 
